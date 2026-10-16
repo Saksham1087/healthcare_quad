@@ -1,0 +1,10 @@
+{
+  "name": "MediScript",
+  "description": "MediScript keeps your whole medical history in one place, and puts you in control of who sees it.\n\nYour records are scattered across hospitals, clinics, labs, and pharmacies. Sutra Health brings them together into one clear timeline.\n\nAdd records the easy way: Send a lab report or prescription PDF or photo, even from WhatsApp. Sutra reads it, organises it, and asks you to confirm before anything is saved.\nOne unified history: Conditions, medications, allergies, lab results, and scans, merged across providers and shown in a single timeline.\nSafer medication tracking: Spot duplicate medicines, allergy conflicts, and interaction warnings before they become a problem.\nYou decide who sees what: Share a single report, not your whole history. Set a purpose and an expiry, and revoke access anytime.\nEmergency ready: An offline emergency card with critical information, plus audited emergency access for doctors.\nTrust you can see: Every record shows where it came from, whether provider-verified, scanned, or entered by you.\nYours to keep: Export your complete history anytime as a standard medical file and a readable PDF.\n\nBuilt for patients, families, and the small clinics and labs that care for them.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
