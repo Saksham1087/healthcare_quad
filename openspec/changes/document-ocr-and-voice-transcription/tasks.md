@@ -6,7 +6,7 @@
 - [x] 1.2 Run `bun scripts/test-voice-ws.mjs` and verify the WS transcription round-trip returns the expected transcript
 - [x] 1.3 Verify tap-to-talk in a Brave/BrowserOS session falls back to server transcription and flows into the chat pipeline (manual check via the preview tunnel)
 - [x] 1.4 Run `tsc --noEmit` and `vite build` with zero errors
-- [ ] 1.5 Commit the voice transcription implementation (server.ts, VoiceAssistantChatbot.tsx, test script) and push
+- [x] 1.5 Commit the voice transcription implementation (server.ts, VoiceAssistantChatbot.tsx, test script) and push
 
 ## 2. OCR explicit simulated-data notice
 
