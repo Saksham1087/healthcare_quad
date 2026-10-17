@@ -660,6 +660,164 @@ app.post('/api/break-glass', (req: Request, res: Response) => {
   }
 });
 
+// Endpoint: Multilingual Voice-to-Voice AI Chatbot (Gemini 3.8 Flash + Gemini TTS)
+app.post('/api/voice-chat', async (req: Request, res: Response) => {
+  try {
+    const { message, language = 'auto', patientContext } = req.body;
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Message text is required' });
+    }
+
+    const patientSummary = patientContext
+      ? `Patient: ${patientContext.name || 'Rajesh Sharma'} (Age: ${patientContext.age || 58}, Blood: ${patientContext.bloodGroup || 'O+'})
+Active Conditions: ${JSON.stringify(patientContext.conditions || [])}
+Active Medications: ${JSON.stringify(patientContext.medications || [])}
+Known Allergies: ${JSON.stringify(patientContext.allergies || [])}
+Recent Vitals & Labs: ${patientContext.recentLabs || 'HbA1c: 6.9%, BP: 128/82, Serum Creatinine: 1.12'}
+Emergency Contact: ${patientContext.emergencyContact || 'Sunita Sharma (+91 98110 44921)'}
+Platform Features: MediScript unified health continuity platform, OCR prescription scanner, medication duplicate detection, purpose-limited ephemeral consent sharing, offline emergency card.`
+      : 'Patient Rajesh Sharma (58yo), taking Telma-H, Rosuvas 10, Ecosprin 75, Glycomet-GP 2, Pan-D. Severe Penicillin allergy. HbA1c 6.9%. Emergency contact: Daughter Sunita Sharma.';
+
+    // Fallback if no Gemini API key configured
+    if (!ai) {
+      const isHindi = /[\u0900-\u097F]/.test(message) || language === 'hi';
+      const isMarathi = /[\u0900-\u097F]/.test(message) && (message.includes('आहे') || message.includes('माझी') || message.includes('काय') || language === 'mr');
+
+      let fallbackText = "You are currently taking Telma-H for blood pressure, Glycomet-GP 2 for diabetes, and have a documented severe allergy to Penicillin.";
+      let detectedLang = 'en';
+
+      if (isMarathi) {
+        fallbackText = "तुम्ही रक्तदाबासाठी टेल्मा-एच (Telma-H) आणि मधुमेहासाठी ग्लायकोमेट घेत आहात. तुम्हाला पेनिसिलिनची गंभीर ॲलर्जी आहे.";
+        detectedLang = 'mr';
+      } else if (isHindi) {
+        fallbackText = "आप ब्लड प्रेशर के लिए टेलमा-एच और डायबिटीज के लिए ग्लाइकोमेट ले रहे हैं। आपको पेनिसिलिन से गंभीर एलर्जी है।";
+        detectedLang = 'hi';
+      }
+
+      return res.json({
+        success: true,
+        replyText: fallbackText,
+        detectedLanguage: detectedLang,
+        audioBase64: null,
+      });
+    }
+
+    const systemInstruction = `You are SaurAssistant (सौर-सहायक), the friendly, compassionate Bulbasaur-themed voice health companion of MediScript.
+Your mission:
+1. Answer ONLY about MediScript, healthcare continuity, and the patient's records, prescriptions, medications, allergies, and health timeline provided in context.
+2. LANGUAGE INSTRUCTION (CRITICAL):
+   - If the user speaks/writes in English, reply in natural, fluent English.
+   - If the user speaks/writes in Hindi (हिन्दी), reply in natural, spoken Hindi (in Devanagari script).
+   - If the user speaks/writes in Marathi (मराठी), reply in natural, spoken Marathi (in Devanagari script).
+   - If requested in a specific language hint (${language !== 'auto' ? language : 'auto'}), honor that language.
+3. VOICE UX REQUIREMENT (CRITICAL):
+   - Keep answers strictly short (1 to 3 conversational sentences max).
+   - Do NOT use markdown, asterisks, hash signs, bullet points, or numbered lists, because this will be spoken aloud!
+   - Speak naturally, warmly, and clearly as a medical voice assistant.
+   - If user asks about something outside their medical records or project, politely steer them back.
+4. Always prioritize patient safety: remind them to consult Dr. Alok Mehta or Dr. Neha Kapoor before changing doses.
+
+PROJECT & PATIENT CONTEXT:
+${patientSummary}`;
+
+    // Step 1: Generate conversational text response in matching language
+    const chatResponse = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: message,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+      },
+    });
+
+    const replyText = chatResponse.text?.trim() || 'I am your MediScript health companion. How can I assist you with your prescriptions or health timeline today?';
+
+    // Detect language of reply
+    let detectedLanguage: 'en' | 'hi' | 'mr' = 'en';
+    if (/[\u0900-\u097F]/.test(replyText)) {
+      if (replyText.includes('आहे') || replyText.includes('नाही') || replyText.includes('माझे') || replyText.includes('औषध')) {
+        detectedLanguage = 'mr';
+      } else {
+        detectedLanguage = 'hi';
+      }
+    }
+
+    // Step 2: Generate natural speech audio via Gemini TTS
+    let audioBase64: string | null = null;
+    try {
+      const ttsResponse = await ai.models.generateContent({
+        model: 'gemini-3.8-flash-lite-tts',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: replyText,
+                speechMetadata: {
+                  style: 'Warm, clear, empathetic Indian medical assistant',
+                },
+              },
+            ],
+          },
+        ],
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Kore' },
+            },
+          },
+        },
+      });
+
+      audioBase64 = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+    } catch (ttsErr) {
+      console.warn('Gemini TTS generation notice (falling back to client audio):', ttsErr);
+      audioBase64 = null;
+    }
+
+    res.json({
+      success: true,
+      replyText,
+      detectedLanguage,
+      audioBase64,
+      mimeType: audioBase64 ? 'audio/wav' : null,
+    });
+  } catch (err: unknown) {
+    console.error('Voice chat error:', err);
+    const message = err instanceof Error ? err.message : 'Voice assistant service error';
+    res.status(500).json({ error: message });
+  }
+});
+
+import http from 'http';
+import { WebSocketServer } from 'ws';
+
+const server = http.createServer(app);
+
+// WebSocket server for real-time live audio streaming
+const wss = new WebSocketServer({ server, path: '/ws/live-audio' });
+
+wss.on('connection', (ws) => {
+  console.log('[WebSocket] Client connected to /ws/live-audio');
+
+  ws.on('message', async (data) => {
+    try {
+      const payload = JSON.parse(data.toString());
+      if (payload.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
+      }
+    } catch (e) {
+      // Ignore malformed ping
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('[WebSocket] Client disconnected from /ws/live-audio');
+  });
+});
+
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
   app.get('*', (req: Request, res: Response) => {
@@ -675,6 +833,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(vite.middlewares);
 }
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`MediScript OCR Server listening on http://0.0.0.0:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`MediScript Server & WebSocket listening on http://0.0.0.0:${PORT}`);
 });
+

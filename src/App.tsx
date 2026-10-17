@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   FileCheck,
@@ -14,9 +14,14 @@ import {
   HeartPulse,
   MessageSquare,
   Eye,
+  Leaf,
+  Users,
+  UserCheck,
+  UserPlus,
 } from 'lucide-react';
 
 import { Navbar, ActiveTabType } from './components/Navbar';
+import { HeroLandingSection } from './components/HeroLandingSection';
 import { HealthTimeline } from './components/HealthTimeline';
 import { PrescriptionViewer } from './components/PrescriptionViewer';
 import { TranscriptionInspector } from './components/TranscriptionInspector';
@@ -29,21 +34,23 @@ import { ComplianceAuditCenter } from './components/ComplianceAuditCenter';
 import { LifetimeExportModal } from './components/LifetimeExportModal';
 import { UploadModal } from './components/UploadModal';
 import { ModelDiagnosticsPanel } from './components/ModelDiagnosticsPanel';
+import { VoiceAssistantChatbot } from './components/VoiceAssistantChatbot';
+import {
+  VineDivider,
+  ThemedSproutLoader,
+  BulbSeedIcon,
+  SplitSeedIntroModal,
+} from './components/BulbasaurThemeAssets';
 
 import { SAMPLE_PRESCRIPTIONS } from './data/samplePrescriptions';
 import {
-  PRIMARY_PATIENT,
-  INITIAL_MEDICATIONS,
-  INITIAL_CONDITIONS,
-  INITIAL_ALLERGIES,
-  INITIAL_LAB_OBSERVATIONS,
-  INITIAL_ENCOUNTERS,
-  INITIAL_CONSENTS,
-  INITIAL_AUDIT_LOGS,
+  INITIAL_PATIENTS_DATABASE,
+  findOrCreatePatientRecord,
 } from './data/patientContinuityRecords';
 import { evaluateClinicalSafety } from './services/clinicalSafety';
 import {
   PatientProfile,
+  PatientRecordStore,
   UnifiedMedication,
   UnifiedCondition,
   UnifiedAllergy,
@@ -63,21 +70,158 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTabType>('timeline');
 
-  // Unified Patient Core Records State
-  const [patient, setPatient] = useState<PatientProfile>(PRIMARY_PATIENT);
-  const [medications, setMedications] = useState<UnifiedMedication[]>(INITIAL_MEDICATIONS);
-  const [conditions, setConditions] = useState<UnifiedCondition[]>(INITIAL_CONDITIONS);
-  const [allergies, setAllergies] = useState<UnifiedAllergy[]>(INITIAL_ALLERGIES);
-  const [observations, setObservations] = useState<UnifiedLabObservation[]>(INITIAL_LAB_OBSERVATIONS);
-  const [encounters, setEncounters] = useState<UnifiedEncounter[]>(INITIAL_ENCOUNTERS);
-  const [consents, setConsents] = useState<EphemeralConsentShare[]>(INITIAL_CONSENTS);
-  const [auditLogs, setAuditLogs] = useState<AuditTrailEvent[]>(INITIAL_AUDIT_LOGS);
-  const [breakGlassLogs, setBreakGlassLogs] = useState<BreakGlassLogEntry[]>([]);
+  // Theme Management (Light / Dark mode persisted in localStorage)
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('mediscript-theme');
+    if (saved) return saved === 'dark';
+    return false; // Default to fresh Bulbasaur warm cream light theme
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('mediscript-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('mediscript-theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  const handleToggleTheme = () => {
+    setIsDarkMode((prev) => !prev);
+  };
+
+  // Split-Seed Opening Intro Animation Modal state (skippable, remembers choice)
+  const [isIntroModalOpen, setIsIntroModalOpen] = useState<boolean>(() => {
+    try {
+      const seen = localStorage.getItem('mediscript-herbarium-intro-seen');
+      return seen !== 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleReturnToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Structured Multi-Patient Database State (persisted in localStorage)
+  const [patientsDatabase, setPatientsDatabase] = useState<Record<string, PatientRecordStore>>(() => {
+    try {
+      const saved = localStorage.getItem('mediscript-patients-db');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved patients db from localStorage', e);
+    }
+    return INITIAL_PATIENTS_DATABASE;
+  });
+
+  // Current Active Patient ID
+  const [currentPatientId, setCurrentPatientId] = useState<string>(() => {
+    const savedId = localStorage.getItem('mediscript-current-patient-id');
+    if (savedId && INITIAL_PATIENTS_DATABASE[savedId]) {
+      return savedId;
+    }
+    return 'pat-rajesh-sharma-9901';
+  });
+
+  // Sync to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('mediscript-patients-db', JSON.stringify(patientsDatabase));
+    } catch (e) {
+      console.warn('LocalStorage save error:', e);
+    }
+  }, [patientsDatabase]);
+
+  useEffect(() => {
+    localStorage.setItem('mediscript-current-patient-id', currentPatientId);
+  }, [currentPatientId]);
+
+  // Retrieve current active patient store safely
+  const currentStore: PatientRecordStore = useMemo(() => {
+    return (
+      patientsDatabase[currentPatientId] ||
+      patientsDatabase['pat-rajesh-sharma-9901'] ||
+      Object.values(patientsDatabase)[0]
+    );
+  }, [patientsDatabase, currentPatientId]);
+
+  const patient = currentStore.patient;
+  const medications = currentStore.medications;
+  const conditions = currentStore.conditions;
+  const allergies = currentStore.allergies;
+  const observations = currentStore.observations;
+  const encounters = currentStore.encounters;
+  const consents = currentStore.consents;
+  const auditLogs = currentStore.auditLogs;
+  const breakGlassLogs = currentStore.breakGlassLogs;
+
+  // Helper to update active patient record store
+  const updateCurrentStore = (updater: (prev: PatientRecordStore) => PatientRecordStore) => {
+    setPatientsDatabase((prev) => {
+      const target = prev[currentPatientId] || Object.values(prev)[0];
+      if (!target) return prev;
+      return {
+        ...prev,
+        [target.patient.id]: updater(target),
+      };
+    });
+  };
+
+  // Switch active patient profile
+  const handleSelectPatient = (patientId: string) => {
+    if (patientsDatabase[patientId]) {
+      setCurrentPatientId(patientId);
+      setNotification(`Switched active profile to ${patientsDatabase[patientId].patient.fullName}`);
+      setTimeout(() => setNotification(null), 3000);
+    }
+  };
+
+  // Create new patient profile
+  const handleCreatePatient = (newProfile: PatientProfile) => {
+    const newStore: PatientRecordStore = {
+      patient: newProfile,
+      medications: [],
+      conditions: [],
+      allergies: [],
+      observations: [],
+      encounters: [],
+      consents: [],
+      auditLogs: [
+        {
+          id: `aud-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          actor: `${newProfile.fullName} (Data Principal)`,
+          action: 'RECORD_INGEST',
+          purpose: 'PROFILE_REGISTRATION',
+          resourceType: `Patient (${newProfile.abhaId})`,
+          provenanceTier: 'patient-entered',
+          ipAddress: '122.161.49.201 (New Delhi)',
+          verificationHash: `sha256:${Math.random().toString(36).slice(2)}`,
+        },
+      ],
+      breakGlassLogs: [],
+    };
+
+    setPatientsDatabase((prev) => ({
+      ...prev,
+      [newProfile.id]: newStore,
+    }));
+    setCurrentPatientId(newProfile.id);
+    setNotification(`Created new patient profile for ${newProfile.fullName} (ABHA: ${newProfile.abhaId})!`);
+    setTimeout(() => setNotification(null), 3500);
+  };
 
   // Doctor Curated View Mode (when clinician view is launched)
   const [activeDoctorViewConsent, setActiveDoctorViewConsent] = useState<EphemeralConsentShare | null>(null);
 
-  // Compute real-time deterministic clinical safety alerts
+  // Compute real-time deterministic clinical safety alerts for current patient
   const [safetyAlertsOverride, setSafetyAlertsOverride] = useState<ClinicalSafetyAlert[] | null>(null);
   const computedSafetyAlerts = useMemo(() => {
     return evaluateClinicalSafety(medications, allergies);
@@ -90,6 +234,13 @@ export default function App() {
   const [currentImageUrl, setCurrentImageUrl] = useState<string>(defaultSample.generateDataUrl());
   const [scanData, setScanData] = useState<PrescriptionData>(defaultSample.presetData);
   const [ocrMode, setOcrMode] = useState<'canvas' | 'whatsapp'>('canvas');
+
+  // OCR Target Patient Assignment: auto-matched or selected by user
+  const [ocrTargetPatientId, setOcrTargetPatientId] = useState<string>(() => {
+    const match = findOrCreatePatientRecord(defaultSample.presetData.patient.name, INITIAL_PATIENTS_DATABASE);
+    return match.patientId;
+  });
+
   const [modelDetails, setModelDetails] = useState<AIModelDetails>({
     modelName: 'gemini-3.8-flash',
     modelVersion: 'gemini-3.8-flash-vision',
@@ -113,6 +264,26 @@ export default function App() {
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
 
+  // Update target patient whenever scanData changes
+  useEffect(() => {
+    if (scanData?.patient?.name) {
+      const match = findOrCreatePatientRecord(scanData.patient.name, patientsDatabase, {
+        age: scanData.patient.age,
+        allergies: scanData.patient.allergies,
+        gender: scanData.patient.gender,
+      });
+      setOcrTargetPatientId(match.patientId);
+    }
+  }, [scanData]);
+
+  // Trigger floating voice chatbot
+  const handleOpenVoice = () => {
+    const launcher = document.querySelector('button[aria-label="Open SaurAssistant Voice Companion"]') as HTMLButtonElement | null;
+    if (launcher) {
+      launcher.click();
+    }
+  };
+
   // Load sample prescription into studio
   const handleSelectSample = (sample: SamplePrescription) => {
     const url = sample.generateDataUrl();
@@ -120,7 +291,16 @@ export default function App() {
     setScanData(sample.presetData);
     setSelectedLineId(null);
     setSessionId(`RX-OCR-${Date.now().toString(36).toUpperCase()}`);
-    setNotification(`Loaded sample: ${sample.title}`);
+
+    // Auto-match patient from sample
+    const match = findOrCreatePatientRecord(sample.presetData.patient.name, patientsDatabase, {
+      age: sample.presetData.patient.age,
+      allergies: sample.presetData.patient.allergies,
+      gender: sample.presetData.patient.gender,
+    });
+    setOcrTargetPatientId(match.patientId);
+
+    setNotification(`Loaded sample for patient: ${sample.presetData.patient.name}`);
     setTimeout(() => setNotification(null), 3000);
   };
 
@@ -161,7 +341,15 @@ export default function App() {
           setSessionId(result.scanSessionId);
         }
 
-        // Log audit event
+        // Auto-match or detect patient name
+        const match = findOrCreatePatientRecord(result.data.patient.name, patientsDatabase, {
+          age: result.data.patient.age,
+          allergies: result.data.patient.allergies,
+          gender: result.data.patient.gender,
+        });
+        setOcrTargetPatientId(match.patientId);
+
+        // Log audit event to active profile
         const auditEvent: AuditTrailEvent = {
           id: `aud-${Date.now()}`,
           timestamp: new Date().toISOString(),
@@ -173,9 +361,12 @@ export default function App() {
           ipAddress: 'Server Internal (GCP asia-south1)',
           verificationHash: `sha256:${Math.random().toString(36).slice(2)}${Date.now()}`,
         };
-        setAuditLogs((prev) => [auditEvent, ...prev]);
+        updateCurrentStore((prev) => ({
+          ...prev,
+          auditLogs: [auditEvent, ...prev.auditLogs],
+        }));
 
-        setNotification('Transcription complete! Bounding boxes mapped. Review and confirm below.');
+        setNotification(`Transcription complete for ${result.data.patient.name || 'Patient'}! Review and commit below.`);
       } else {
         throw new Error(result.error || 'Failed to parse prescription data');
       }
@@ -190,8 +381,58 @@ export default function App() {
   };
 
   // Commit scanned prescription into patient's permanent longitudinal health history
+  // Updates properly in their respective areas: medications, encounters, conditions, allergies, and audit
   const handleCommitScanToTimeline = () => {
-    // Convert scanned medications into UnifiedMedication entries
+    let targetId = ocrTargetPatientId;
+    let targetStore = patientsDatabase[targetId];
+
+    // If new profile was requested or target is not in database, create it!
+    if (!targetStore || targetId === '__NEW__') {
+      const match = findOrCreatePatientRecord(scanData.patient.name, patientsDatabase, {
+        age: scanData.patient.age,
+        allergies: scanData.patient.allergies,
+        gender: scanData.patient.gender,
+      });
+      targetId = match.patientId;
+      targetStore = {
+        patient: match.profile,
+        medications: [],
+        conditions: [],
+        allergies:
+          scanData.patient.allergies &&
+          !scanData.patient.allergies.toLowerCase().includes('none') &&
+          !scanData.patient.allergies.toLowerCase().includes('nkda')
+            ? [
+                {
+                  id: `alg-init-${Date.now()}`,
+                  substance: scanData.patient.allergies,
+                  criticality: scanData.patient.allergies.toLowerCase().includes('anaphyl') ? 'high' : 'medium',
+                  category: 'medication',
+                  manifestation: 'Documented on prescriber clinical script',
+                  verificationStatus: 'confirmed',
+                  recordedDate: scanData.doctor.date || new Date().toISOString().split('T')[0],
+                  provenance: {
+                    id: `prov-alg-${Date.now()}`,
+                    recordedAt: new Date().toISOString(),
+                    tier: 'ocr-human-confirmed',
+                    confidenceScore: scanData.overallConfidence,
+                    hospitalOrClinic: scanData.doctor.clinicOrHospital,
+                    doctorName: scanData.doctor.name,
+                  },
+                },
+              ]
+            : [],
+        observations: [],
+        encounters: [],
+        consents: [],
+        auditLogs: [],
+        breakGlassLogs: [],
+      };
+    }
+
+    const targetPatient = targetStore.patient;
+
+    // 1. Structure Medications
     const newMeds: UnifiedMedication[] = scanData.medications.map((m, idx) => ({
       id: `med-scan-${Date.now()}-${idx}`,
       brandName: m.brandName,
@@ -222,12 +463,12 @@ export default function App() {
         confidenceScore: m.confidence,
         hospitalOrClinic: scanData.doctor.clinicOrHospital,
         doctorName: scanData.doctor.name,
-        verifiedBy: `${patient.fullName} (Patient Confirmed)`,
+        verifiedBy: `${targetPatient.fullName} (Patient Confirmed)`,
         sourceDocumentName: `Prescription_${scanData.doctor.clinicOrHospital.replace(/\s+/g, '_')}.pdf`,
       },
     }));
 
-    // Add Encounter
+    // 2. Structure Encounter
     const newEncounter: UnifiedEncounter = {
       id: `enc-scan-${Date.now()}`,
       hospitalName: scanData.doctor.clinicOrHospital,
@@ -235,7 +476,7 @@ export default function App() {
       specialty: scanData.doctor.specialty || 'General Medicine',
       date: scanData.doctor.date || new Date().toISOString().split('T')[0],
       encounterType: 'OPD',
-      reasonForVisit: scanData.summaryText.slice(0, 80),
+      reasonForVisit: scanData.summaryText.slice(0, 90),
       summary: scanData.summaryText,
       relatedRecordIds: newMeds.map((m) => m.id),
       provenance: {
@@ -245,30 +486,119 @@ export default function App() {
         confidenceScore: scanData.overallConfidence,
         hospitalOrClinic: scanData.doctor.clinicOrHospital,
         doctorName: scanData.doctor.name,
-        verifiedBy: `${patient.fullName} (Patient Confirmed)`,
+        verifiedBy: `${targetPatient.fullName} (Patient Confirmed)`,
       },
     };
 
-    setMedications((prev) => [...newMeds, ...prev]);
-    setEncounters((prev) => [newEncounter, ...prev]);
+    // 3. Structure Conditions from Clinical Indications
+    const newConditions: UnifiedCondition[] = [];
+    const indications = Array.from(
+      new Set(
+        scanData.medications
+          .map((m) => m.clinicalIndication)
+          .filter((ind): ind is string => Boolean(ind && typeof ind === 'string'))
+      )
+    );
+    for (const ind of indications) {
+      const exists = targetStore.conditions.some(
+        (c) =>
+          c.code.text.toLowerCase().includes(ind.toLowerCase()) ||
+          ind.toLowerCase().includes(c.code.text.toLowerCase())
+      );
+      if (!exists) {
+        newConditions.push({
+          id: `cond-scan-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          code: {
+            coding: [{ system: 'http://snomed.info/sct', code: '404684003', display: ind }],
+            text: ind,
+          },
+          clinicalStatus: 'active',
+          verificationStatus: 'confirmed',
+          onsetDate: scanData.doctor.date || new Date().toISOString().split('T')[0],
+          recordedDate: new Date().toISOString().split('T')[0],
+          diagnosingDoctor: scanData.doctor.name,
+          diagnosingFacility: scanData.doctor.clinicOrHospital,
+          notes: `Diagnosed during encounter at ${scanData.doctor.clinicOrHospital}.`,
+          provenance: {
+            id: `prov-cond-${Date.now()}`,
+            recordedAt: new Date().toISOString(),
+            tier: 'ocr-human-confirmed',
+            confidenceScore: scanData.overallConfidence,
+            hospitalOrClinic: scanData.doctor.clinicOrHospital,
+            doctorName: scanData.doctor.name,
+            verifiedBy: `${targetPatient.fullName} (Patient Confirmed)`,
+          },
+        });
+      }
+    }
 
-    // Record audit event
+    // 4. Structure Allergies
+    const newAllergies: UnifiedAllergy[] = [];
+    const rawAllergies = scanData.patient.allergies;
+    if (
+      rawAllergies &&
+      !rawAllergies.toLowerCase().includes('none') &&
+      !rawAllergies.toLowerCase().includes('nkda') &&
+      !rawAllergies.toLowerCase().includes('no known')
+    ) {
+      const exists = targetStore.allergies.some((a) =>
+        a.substance.toLowerCase().includes(rawAllergies.toLowerCase())
+      );
+      if (!exists) {
+        newAllergies.push({
+          id: `alg-scan-${Date.now()}`,
+          substance: rawAllergies,
+          criticality: rawAllergies.toLowerCase().includes('anaphyl') ? 'high' : 'medium',
+          category: 'medication',
+          manifestation: `Prescription header allergy annotation by ${scanData.doctor.name}`,
+          verificationStatus: 'confirmed',
+          recordedDate: scanData.doctor.date || new Date().toISOString().split('T')[0],
+          provenance: {
+            id: `prov-alg-${Date.now()}`,
+            recordedAt: new Date().toISOString(),
+            tier: 'ocr-human-confirmed',
+            confidenceScore: scanData.overallConfidence,
+            hospitalOrClinic: scanData.doctor.clinicOrHospital,
+            doctorName: scanData.doctor.name,
+          },
+        });
+      }
+    }
+
+    // 5. Structure Audit Log
     const auditEvent: AuditTrailEvent = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),
-      actor: `${patient.fullName} (Patient Self)`,
+      actor: `${targetPatient.fullName} (Data Principal)`,
       action: 'HUMAN_CONFIRM',
       purpose: 'RECORD_INGESTION_VALIDATION',
-      resourceType: `MedicationRequest (${newMeds.length} items)`,
+      resourceType: `MedicationRequest (${newMeds.length} items) & Encounter`,
       provenanceTier: 'ocr-human-confirmed',
       ipAddress: '122.161.49.201 (New Delhi)',
       verificationHash: `sha256:${Math.random().toString(36).slice(2)}${Date.now()}`,
     };
-    setAuditLogs((prev) => [auditEvent, ...prev]);
 
-    setNotification('Script verified and committed into your Unified Health Timeline!');
+    // Store & update properly in target patient profile!
+    setPatientsDatabase((prev) => ({
+      ...prev,
+      [targetId]: {
+        ...targetStore,
+        patient: targetPatient,
+        medications: [...newMeds, ...targetStore.medications],
+        encounters: [newEncounter, ...targetStore.encounters],
+        conditions: [...newConditions, ...targetStore.conditions],
+        allergies: [...newAllergies, ...targetStore.allergies],
+        auditLogs: [auditEvent, ...targetStore.auditLogs],
+      },
+    }));
+
+    // Switch view to this patient
+    setCurrentPatientId(targetId);
     setActiveTab('timeline');
-    setTimeout(() => setNotification(null), 4000);
+    setNotification(
+      `Saved script for ${targetPatient.fullName}! Stored ${newMeds.length} meds, 1 encounter, and clinical indications in their respective areas.`
+    );
+    setTimeout(() => setNotification(null), 4500);
   };
 
   // Edit transcription line
@@ -300,24 +630,28 @@ export default function App() {
       ipAddress: '122.161.49.201 (New Delhi)',
       verificationHash: `sha256:${Math.random().toString(36).slice(2)}`,
     };
-    setAuditLogs((prev) => [auditEvent, ...prev]);
+    updateCurrentStore((prev) => ({
+      ...prev,
+      auditLogs: [auditEvent, ...prev.auditLogs],
+    }));
     setNotification('Safety alert marked as reconciled with clinical note.');
     setTimeout(() => setNotification(null), 3000);
   };
 
   // Discontinue a duplicate medication
   const handleDiscontinueMedication = (medId: string) => {
-    setMedications((prev) =>
-      prev.map((m) => (m.id === medId ? { ...m, status: 'discontinued' } : m))
-    );
+    updateCurrentStore((prev) => ({
+      ...prev,
+      medications: prev.medications.map((m) =>
+        m.id === medId ? { ...m, status: 'discontinued' } : m
+      ),
+    }));
     setNotification('Medication marked as discontinued in active regimen.');
     setTimeout(() => setNotification(null), 3000);
   };
 
   // Create new ephemeral consent share
   const handleCreateConsent = (newConsent: EphemeralConsentShare) => {
-    setConsents((prev) => [newConsent, ...prev]);
-
     const auditEvent: AuditTrailEvent = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -328,17 +662,17 @@ export default function App() {
       ipAddress: '122.161.49.201 (New Delhi)',
       verificationHash: `sha256:${Math.random().toString(36).slice(2)}`,
     };
-    setAuditLogs((prev) => [auditEvent, ...prev]);
+    updateCurrentStore((prev) => ({
+      ...prev,
+      consents: [newConsent, ...prev.consents],
+      auditLogs: [auditEvent, ...prev.auditLogs],
+    }));
     setNotification(`Ephemeral share created: ${newConsent.shareToken}`);
     setTimeout(() => setNotification(null), 3000);
   };
 
   // Revoke consent
   const handleRevokeConsent = (consentId: string) => {
-    setConsents((prev) =>
-      prev.map((c) => (c.id === consentId ? { ...c, status: 'revoked' } : c))
-    );
-
     const auditEvent: AuditTrailEvent = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -349,15 +683,19 @@ export default function App() {
       ipAddress: '122.161.49.201 (New Delhi)',
       verificationHash: `sha256:${Math.random().toString(36).slice(2)}`,
     };
-    setAuditLogs((prev) => [auditEvent, ...prev]);
+    updateCurrentStore((prev) => ({
+      ...prev,
+      consents: prev.consents.map((c) =>
+        c.id === consentId ? { ...c, status: 'revoked' } : c
+      ),
+      auditLogs: [auditEvent, ...prev.auditLogs],
+    }));
     setNotification('Doctor access token revoked immediately.');
     setTimeout(() => setNotification(null), 3000);
   };
 
   // Trigger emergency break-glass
   const handleTriggerBreakGlass = (entry: BreakGlassLogEntry) => {
-    setBreakGlassLogs((prev) => [entry, ...prev]);
-
     const auditEvent: AuditTrailEvent = {
       id: `aud-${Date.now()}`,
       timestamp: entry.timestamp,
@@ -368,25 +706,27 @@ export default function App() {
       ipAddress: entry.ipAddress,
       verificationHash: `sha256:${Math.random().toString(36).slice(2)}`,
     };
-    setAuditLogs((prev) => [auditEvent, ...prev]);
+    updateCurrentStore((prev) => ({
+      ...prev,
+      breakGlassLogs: [entry, ...prev.breakGlassLogs],
+      auditLogs: [auditEvent, ...prev.auditLogs],
+    }));
   };
 
   // Revoke emergency break-glass session early
   const handleRevokeBreakGlass = (logId: string) => {
-    setBreakGlassLogs((prev) =>
-      prev.map((l) => (l.id === logId ? { ...l, revokedEarly: true } : l))
-    );
+    updateCurrentStore((prev) => ({
+      ...prev,
+      breakGlassLogs: prev.breakGlassLogs.map((l) =>
+        l.id === logId ? { ...l, revokedEarly: true } : l
+      ),
+    }));
     setNotification('Emergency session revoked early by patient family.');
     setTimeout(() => setNotification(null), 3000);
   };
 
-  // Simulate cryptographic erasure
+  // Simulate cryptographic erasure for current patient
   const handleSimulateErasure = () => {
-    setMedications([]);
-    setConditions([]);
-    setObservations([]);
-    setEncounters([]);
-
     const auditEvent: AuditTrailEvent = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),
@@ -397,8 +737,15 @@ export default function App() {
       ipAddress: '122.161.49.201 (New Delhi)',
       verificationHash: `sha256:${Math.random().toString(36).slice(2)}`,
     };
-    setAuditLogs((prev) => [auditEvent, ...prev]);
-    setNotification('Clinical keys shredded. Identifiable medical documents purged.');
+    updateCurrentStore((prev) => ({
+      ...prev,
+      medications: [],
+      conditions: [],
+      observations: [],
+      encounters: [],
+      auditLogs: [auditEvent, ...prev.auditLogs],
+    }));
+    setNotification(`Clinical keys shredded. Records purged for ${patient.fullName}.`);
   };
 
   // Export audit ledger CSV
@@ -417,7 +764,7 @@ export default function App() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `MediScript_Audit_Trail_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `MediScript_Audit_Trail_${patient.fullName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -441,28 +788,40 @@ export default function App() {
   const unresolvedAlertCount = activeSafetyAlerts.filter((a) => !a.isResolved).length;
   const activeConsentCount = consents.filter((c) => c.status === 'active').length;
 
+  // Determine OCR target patient label and match info
+  const targetPatientStore = patientsDatabase[ocrTargetPatientId];
+  const targetPatientName = targetPatientStore?.patient?.fullName || scanData.patient?.name || 'New Profile';
+  const isTargetNew = ocrTargetPatientId === '__NEW__' || !targetPatientStore;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Top Bar Navigation (Strict 3-zone contract) */}
+    <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] flex flex-col font-sans transition-colors duration-200">
+      {/* Top Bar Navigation (Strict 3-zone contract with theme switch & Patient Profile Switcher) */}
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenUpload={() => setIsUploadModalOpen(true)}
+        onOpenVoice={handleOpenVoice}
         alertCount={unresolvedAlertCount}
         activeConsentCount={activeConsentCount}
+        isDarkMode={isDarkMode}
+        onToggleTheme={handleToggleTheme}
+        currentPatientId={currentPatientId}
+        patientsDatabase={patientsDatabase}
+        onSelectPatient={handleSelectPatient}
+        onCreatePatient={handleCreatePatient}
       />
 
-      {/* Notification Toast */}
+      {/* Notification Toast with Bulbasaur Teal styling */}
       {notification && (
-        <div className="bg-teal-950/90 border-b border-teal-800/80 px-6 py-2.5 text-xs text-teal-200 flex items-center justify-between transition-all">
+        <div className="bg-[#3FA796]/15 border-b border-[#3FA796]/30 px-6 py-2.5 text-xs text-[#0F3D2E] dark:text-[#B8E986] flex items-center justify-between transition-all backdrop-blur-sm">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-3.5 h-3.5 text-teal-400" />
-            <span>{notification}</span>
+            <Sparkles className="w-4 h-4 text-[#3FA796]" />
+            <span className="font-medium">{notification}</span>
           </div>
           <button
             type="button"
             onClick={() => setNotification(null)}
-            className="text-teal-400 hover:text-white text-xs font-bold"
+            className="text-[#3FA796] hover:text-[#0F3D2E] dark:hover:text-white text-xs font-bold"
           >
             &times;
           </button>
@@ -471,7 +830,24 @@ export default function App() {
 
       {/* Main Viewport Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
-        {/* TAB 1: Longitudinal Health Timeline */}
+        {/* Polished Hero / Landing Section (Bulbasaur-Inspired Nature Theme) */}
+        <HeroLandingSection
+          isDarkMode={isDarkMode}
+          onToggleTheme={handleToggleTheme}
+          onOpenScan={() => setIsUploadModalOpen(true)}
+          onOpenVoice={handleOpenVoice}
+          onNavigateToTab={setActiveTab}
+        />
+
+        {/* Themed Sprout Loader when processing */}
+        {isProcessing && (
+          <ThemedSproutLoader label="Cultivating prescription transcription with Gemini Multimodal Vision..." />
+        )}
+
+        {/* Natural Vine Curved Divider */}
+        <VineDivider className="w-full h-3 text-[#3FA796]/30 my-1" />
+
+        {/* TAB 1: Longitudinal Health Timeline with Quick Patient Switcher */}
         {activeTab === 'timeline' && (
           <HealthTimeline
             patient={patient}
@@ -480,6 +856,9 @@ export default function App() {
             allergies={allergies}
             observations={observations}
             encounters={encounters}
+            currentPatientId={currentPatientId}
+            patientsDatabase={patientsDatabase}
+            onSelectPatient={handleSelectPatient}
             onInspectDocument={(docName) => {
               setActiveTab('scanner');
               setNotification(`Inspecting source document: ${docName}`);
@@ -492,19 +871,71 @@ export default function App() {
           />
         )}
 
-        {/* TAB 2: Prescription & Lab OCR Pipeline */}
+        {/* TAB 2: Prescription & Lab OCR Pipeline with Structured Patient Destination */}
         {activeTab === 'scanner' && (
           <div className="space-y-4">
+            {/* Target Patient Profile Assignment Banner */}
+            <div className="p-4 bg-white/80 dark:bg-[#0B1F18]/90 backdrop-blur-md rounded-2xl border border-[#3FA796]/30 shadow-sm flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0F3D2E] to-[#3FA796] flex items-center justify-center font-bold text-white text-sm shadow-sm shrink-0">
+                  {targetPatientName.split(' ').map((n) => n[0]).join('')}
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-bold text-[#0F3D2E] dark:text-[#F4FAF3]">
+                      Target Patient Destination:
+                    </span>
+                    <span className="text-xs font-extrabold text-[#3FA796] dark:text-[#B8E986]">
+                      {targetPatientName}
+                    </span>
+                    {isTargetNew ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#B8E986]/20 text-[#0F3D2E] dark:text-[#B8E986] border border-[#B8E986]/40">
+                        ✨ New Profile Auto-Generated
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#3FA796]/15 text-[#3FA796] dark:text-[#B8E986]">
+                        ✓ Matched Existing Profile ({targetPatientStore.patient.age}y, {targetPatientStore.patient.bloodGroup})
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#4B6E60] dark:text-[#95BDB0] mt-0.5">
+                    Prescription Header Name: &quot;<strong className="text-[#0F3D2E] dark:text-white">{scanData.patient.name}</strong>&quot; · Data will be structured into this profile&apos;s Medications, Encounters, and Conditions.
+                  </p>
+                </div>
+              </div>
+
+              {/* Patient Selector Dropdown */}
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-xs font-semibold text-[#4B6E60] dark:text-[#95BDB0]">
+                  Assign Script To:
+                </span>
+                <select
+                  value={ocrTargetPatientId}
+                  onChange={(e) => setOcrTargetPatientId(e.target.value)}
+                  className="bg-[#F4FAF3] dark:bg-[#122B22] border border-[#3FA796]/30 rounded-xl px-3 py-1.5 text-xs font-semibold text-[#0F3D2E] dark:text-[#F4FAF3] focus:outline-none focus:border-[#3FA796]"
+                >
+                  {Object.entries(patientsDatabase).map(([id, store]) => (
+                    <option key={id} value={id}>
+                      {store.patient.fullName} (ABHA: {store.patient.abhaId})
+                    </option>
+                  ))}
+                  <option value="__NEW__">
+                    + Create Brand New Profile for &quot;{scanData.patient.name}&quot;
+                  </option>
+                </select>
+              </div>
+            </div>
+
             {/* Mode Switcher: Dual Canvas OCR vs WhatsApp Ingestion Simulator */}
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 p-1 bg-slate-950 rounded-lg border border-slate-800">
+            <div className="glass-panel rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 border border-[#3FA796]/20">
+              <div className="flex items-center gap-1.5 p-1 bg-white/60 dark:bg-[#071711] rounded-xl border border-[#3FA796]/20">
                 <button
                   type="button"
                   onClick={() => setOcrMode('canvas')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     ocrMode === 'canvas'
-                      ? 'bg-slate-800 text-teal-300 shadow-sm border border-slate-700'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#3FA796] text-white shadow-sm'
+                      : 'text-[#4B6E60] dark:text-[#95BDB0] hover:text-[#0F3D2E] dark:hover:text-white'
                   }`}
                 >
                   Prescription Studio (Dual Canvas OCR)
@@ -512,10 +943,10 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setOcrMode('whatsapp')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors flex items-center gap-1.5 ${
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
                     ocrMode === 'whatsapp'
-                      ? 'bg-slate-800 text-teal-300 shadow-sm border border-slate-700'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-[#3FA796] text-white shadow-sm'
+                      : 'text-[#4B6E60] dark:text-[#95BDB0] hover:text-[#0F3D2E] dark:hover:text-white'
                   }`}
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -527,15 +958,15 @@ export default function App() {
                 <button
                   type="button"
                   onClick={handleCommitScanToTimeline}
-                  className="px-3.5 py-1.5 text-xs font-bold text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-lg transition-colors flex items-center gap-1.5 shadow-sm shadow-teal-900/30"
+                  className="px-4 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-[#0F3D2E] to-[#3FA796] hover:opacity-95 rounded-xl transition-all flex items-center gap-1.5 shadow-sm shadow-[#0F3D2E]/20"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-slate-900" />
-                  <span>Commit Script to Timeline</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#B8E986]" />
+                  <span>Commit Script to {targetPatientName.split(' ')[0]}&apos;s Timeline</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsUploadModalOpen(true)}
-                  className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-750 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5"
+                  className="px-3.5 py-1.5 text-xs font-semibold text-[#0F3D2E] dark:text-[#F4FAF3] bg-white/70 dark:bg-[#122B22] hover:bg-white dark:hover:bg-[#17382D] rounded-xl border border-[#3FA796]/30 transition-colors flex items-center gap-1.5"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   <span>Change Script</span>
@@ -629,6 +1060,14 @@ export default function App() {
         )}
       </main>
 
+      {/* Floating Multilingual Voice-to-Voice AI Chatbot (SaurAssistant) */}
+      <VoiceAssistantChatbot
+        patient={patient}
+        medications={medications}
+        allergies={allergies}
+        conditions={conditions}
+      />
+
       {/* Upload & Sample Preset Modal */}
       <UploadModal
         isOpen={isUploadModalOpen}
@@ -650,31 +1089,155 @@ export default function App() {
         encounters={encounters}
       />
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 px-6 py-4 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="font-semibold text-slate-400">MediScript Continuity Platform</span>
-          <span aria-hidden="true">·</span>
-          <span>HL7 FHIR Release 4 & NRCES / ABDM Guidelines</span>
-          <span aria-hidden="true">·</span>
-          <span>DPDP Act 2023 Sovereign Encryption</span>
+      {/* Split-Seed Opening Intro Animation Modal */}
+      <SplitSeedIntroModal
+        isOpen={isIntroModalOpen}
+        onClose={() => setIsIntroModalOpen(false)}
+      />
+
+      {/* Editorial Vintage Natural-History Multi-Column Footer */}
+      <footer className="border-t-2 border-[#C9A24B]/35 bg-[#FAF6EA] dark:bg-[#0E2A21] px-6 md:px-12 py-10 text-xs text-[#3D5A4C] dark:text-[#A3C5B8] mt-auto font-sans transition-colors">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 pb-8 border-b border-[#C9A24B]/25">
+          {/* Col 1: Wordmark & Philosophy */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#3FA796]/15 border border-[#C9A24B]/40 flex items-center justify-center text-[#3FA796]">
+                <BulbSeedIcon size={20} />
+              </div>
+              <span className="font-editorial text-xl font-bold tracking-tight text-[#1B2A22] dark:text-[#F3EBD3]">
+                MediScript
+              </span>
+            </div>
+            <p className="text-xs leading-relaxed">
+              Fasciculus I · Editorial Vintage Natural-History Style. Cultivating interconnected health continuity for Indian patients across hospitals, clinics, and diagnostic labs.
+            </p>
+            <div className="label-micro text-[#C9A24B]">
+              INDEX RERUM · MMXXVI
+            </div>
+          </div>
+
+          {/* Col 2: Sovereign Health Architecture */}
+          <div className="space-y-2.5">
+            <h4 className="label-micro text-[#C9A24B]">ARCHITECTURA DIGITALIS</h4>
+            <ul className="space-y-1.5 text-xs">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#7BC96F]" />
+                <span>HL7 FHIR Release 4 Certified</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#3FA796]" />
+                <span>India NRCES / ABDM Guidelines</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C9A24B]" />
+                <span>DPDP Act 2023 Sovereign Shield</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#C5E99B]" />
+                <span>Gemini 3.8 Multimodal Vision</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 3: Latin-Style Section Guide */}
+          <div className="space-y-2.5">
+            <h4 className="label-micro text-[#C9A24B]">TABULAE &amp; SECTIONES</h4>
+            <ul className="space-y-1.5 text-xs font-mono">
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('timeline')}
+                  className="hover:text-[#3FA796] transition-colors"
+                >
+                  I. CHRONICA (Health Timeline)
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('scanner')}
+                  className="hover:text-[#3FA796] transition-colors"
+                >
+                  II. SCRIPTURA (Prescription OCR)
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('safety')}
+                  className="hover:text-[#3FA796] transition-colors"
+                >
+                  III. CAUTELA (Safety Conflicts)
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('consent')}
+                  className="hover:text-[#3FA796] transition-colors"
+                >
+                  IV. CONSENSUS (Doctor Sharing)
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('emergency')}
+                  className="hover:text-[#3FA796] transition-colors"
+                >
+                  V. EMERGENTIA (Break-Glass Pass)
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          {/* Col 4: Herbarium Actions & Return to Top */}
+          <div className="space-y-3">
+            <h4 className="label-micro text-[#C9A24B]">OPERATIO &amp; REDITUS</h4>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={handleReturnToTop}
+                className="w-full text-left px-3 py-2 rounded-xl bg-white/70 dark:bg-[#14372C] border border-[#C9A24B]/35 hover:border-[#3FA796] font-mono text-xs font-bold text-[#1B2A22] dark:text-[#F3EBD3] transition-all flex items-center justify-between"
+              >
+                <span>↑ RETURN TO TOP</span>
+                <span className="text-[10px] text-[#C9A24B]">[AD APICEM]</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsIntroModalOpen(true)}
+                className="w-full text-left px-3 py-2 rounded-xl bg-white/70 dark:bg-[#14372C] border border-[#C9A24B]/35 hover:border-[#3FA796] font-mono text-xs text-[#3D5A4C] dark:text-[#A3C5B8] hover:text-[#3FA796] transition-all"
+              >
+                Replay Split-Seed Intro
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsExportModalOpen(true)}
+                className="w-full text-left px-3 py-2 rounded-xl bg-white/70 dark:bg-[#14372C] border border-[#C9A24B]/35 hover:border-[#3FA796] font-mono text-xs text-[#3D5A4C] dark:text-[#A3C5B8] hover:text-[#3FA796] transition-all"
+              >
+                Export FHIR Bundle &amp; PDF
+              </button>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => setActiveTab('audit')}
-            className="hover:text-teal-400 transition-colors"
-          >
-            Audit Trail ({auditLogs.length} Events)
-          </button>
-          <span aria-hidden="true">·</span>
-          <button
-            type="button"
-            onClick={() => setIsExportModalOpen(true)}
-            className="hover:text-teal-400 transition-colors"
-          >
-            Export FHIR Bundle
-          </button>
+
+        {/* Footer Base Strip */}
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4 text-[11px] font-mono">
+          <div className="flex items-center gap-2">
+            <span className="text-[#1B2A22] dark:text-[#F3EBD3] font-bold">
+              Current Active Patient: {patient.fullName} ({patient.bloodGroup})
+            </span>
+            <span>·</span>
+            <span>ABHA: {patient.abhaId}</span>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <span>Palette: Forest 900 · Teal 500 · Leaf 400 · Parchment · Gold Leaf</span>
+            <span>·</span>
+            <span>No Official Pokémon Assets Used</span>
+          </div>
         </div>
       </footer>
     </div>

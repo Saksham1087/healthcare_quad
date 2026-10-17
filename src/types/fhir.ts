@@ -205,3 +205,16 @@ export interface AuditTrailEvent {
   ipAddress: string;
   verificationHash: string;
 }
+
+export interface PatientRecordStore {
+  patient: PatientProfile;
+  medications: UnifiedMedication[];
+  conditions: UnifiedCondition[];
+  allergies: UnifiedAllergy[];
+  observations: UnifiedLabObservation[];
+  encounters: UnifiedEncounter[];
+  consents: EphemeralConsentShare[];
+  auditLogs: AuditTrailEvent[];
+  breakGlassLogs: BreakGlassLogEntry[];
+}
+

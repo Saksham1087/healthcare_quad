@@ -592,3 +592,536 @@ export const INITIAL_AUDIT_LOGS: AuditTrailEvent[] = [
     verificationHash: 'sha256:cb6157a262f3690d7040ebd226a1c8f674b7d71064a928f68b373f5ca1479636',
   },
 ];
+
+import { PatientRecordStore } from '../types/fhir';
+
+export const INITIAL_PATIENTS_DATABASE: Record<string, PatientRecordStore> = {
+  'pat-rajesh-sharma-9901': {
+    patient: PRIMARY_PATIENT,
+    medications: INITIAL_MEDICATIONS,
+    conditions: INITIAL_CONDITIONS,
+    allergies: INITIAL_ALLERGIES,
+    observations: INITIAL_LAB_OBSERVATIONS,
+    encounters: INITIAL_ENCOUNTERS,
+    consents: INITIAL_CONSENTS,
+    auditLogs: INITIAL_AUDIT_LOGS,
+    breakGlassLogs: [],
+  },
+
+  'pat-robert-martinez-4802': {
+    patient: {
+      id: 'pat-robert-martinez-4802',
+      abhaId: '91-5582-9014-3321',
+      abhaAddress: 'robert.martinez@abdm',
+      fullName: 'Robert C. Martinez',
+      dateOfBirth: '1978-04-12',
+      age: 48,
+      gender: 'male',
+      bloodGroup: 'A+',
+      phone: '+91 98711 02934',
+      email: 'robert.martinez@gmail.com',
+      emergencyContact: {
+        name: 'Elena Martinez',
+        relationship: 'Spouse',
+        phone: '+91 98711 02935',
+      },
+      city: 'Gurugram',
+      state: 'Haryana',
+    },
+    medications: [
+      {
+        id: 'med-rob-azithro',
+        brandName: 'Zithromax (Z-Pak)',
+        genericName: 'Azithromycin',
+        activeIngredients: [{ name: 'Azithromycin', strengthMg: 250, unit: 'mg' }],
+        dosageForm: 'Oral Tablet',
+        strength: '250 mg',
+        sig: '2 tab stat, then 1 tab qd x 4d',
+        sigTranslated: 'Take 2 tablets immediately on Day 1, then 1 tablet daily for 4 days',
+        timing: 'morning',
+        relationToFood: 'after_food',
+        status: 'active',
+        prescribedDate: '2026-10-14',
+        prescribingDoctor: 'Dr. Evelyn Vance, MD',
+        prescribingFacility: 'Metropolitan Health Center',
+        refillsRemaining: 0,
+        therapeuticClass: 'Macrolide Antibiotic',
+        provenance: {
+          id: 'prov-rob-1',
+          recordedAt: '2026-10-14T10:00:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 96.2,
+          hospitalOrClinic: 'Metropolitan Health Center',
+          doctorName: 'Dr. Evelyn Vance',
+          verifiedBy: 'Robert Martinez',
+          sourceDocumentName: 'Rx_DrEvelynVance.jpg',
+        },
+      },
+      {
+        id: 'med-rob-benzo',
+        brandName: 'Tessalon Perles',
+        genericName: 'Benzonatate',
+        activeIngredients: [{ name: 'Benzonatate', strengthMg: 100, unit: 'mg' }],
+        dosageForm: 'Liquid-filled Perle Capsule',
+        strength: '100 mg',
+        sig: '1 cap PO TID prn cough',
+        sigTranslated: 'Swallow 1 capsule whole three times daily as needed for cough (Do not chew)',
+        timing: 'tid',
+        relationToFood: 'anytime',
+        status: 'active',
+        prescribedDate: '2026-10-14',
+        prescribingDoctor: 'Dr. Evelyn Vance, MD',
+        prescribingFacility: 'Metropolitan Health Center',
+        refillsRemaining: 1,
+        therapeuticClass: 'Non-Narcotic Antitussive',
+        provenance: {
+          id: 'prov-rob-2',
+          recordedAt: '2026-10-14T10:00:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 91.5,
+          hospitalOrClinic: 'Metropolitan Health Center',
+          doctorName: 'Dr. Evelyn Vance',
+          verifiedBy: 'Robert Martinez',
+          sourceDocumentName: 'Rx_DrEvelynVance.jpg',
+        },
+      },
+    ],
+    conditions: [
+      {
+        id: 'cond-rob-sinusitis',
+        code: {
+          coding: [{ system: 'http://snomed.info/sct', code: '36971009', display: 'Sinusitis' }],
+          text: 'Acute Bacterial Sinusitis with Bronchial Irritation',
+        },
+        clinicalStatus: 'active',
+        verificationStatus: 'confirmed',
+        onsetDate: '2026-10-12',
+        recordedDate: '2026-10-14',
+        diagnosingDoctor: 'Dr. Evelyn Vance, MD',
+        diagnosingFacility: 'Metropolitan Health Center',
+        notes: 'Penicillin allergy noted; safely treated with Macrolide regimen.',
+        provenance: {
+          id: 'prov-cond-rob-1',
+          recordedAt: '2026-10-14T10:00:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 97.1,
+          hospitalOrClinic: 'Metropolitan Health Center',
+        },
+      },
+    ],
+    allergies: [
+      {
+        id: 'alg-rob-pcn',
+        substance: 'Penicillin',
+        criticality: 'medium',
+        category: 'medication',
+        manifestation: 'Pruritic erythematous rash across chest and arms',
+        verificationStatus: 'confirmed',
+        recordedDate: '2024-05-10',
+        provenance: {
+          id: 'prov-alg-rob',
+          recordedAt: '2024-05-10T09:00:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 98.0,
+          hospitalOrClinic: 'Metropolitan Health Center',
+        },
+      },
+    ],
+    observations: [
+      {
+        id: 'obs-rob-temp',
+        testName: 'Oral Body Temperature',
+        loincCode: '8310-5',
+        value: 101.2,
+        unit: '°F',
+        referenceRange: { low: 97.0, high: 99.0, text: 'Normal: 97.0 - 99.0 °F' },
+        interpretation: 'high',
+        effectiveDate: '2026-10-14',
+        performer: 'Metropolitan Health Triage',
+        panelName: 'Vital Signs',
+        provenance: {
+          id: 'prov-obs-rob-1',
+          recordedAt: '2026-10-14T09:30:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 99.0,
+          hospitalOrClinic: 'Metropolitan Health Center',
+        },
+      },
+    ],
+    encounters: [
+      {
+        id: 'enc-rob-1',
+        hospitalName: 'Metropolitan Health Center',
+        doctorName: 'Dr. Evelyn Vance, MD',
+        specialty: 'Internal Medicine',
+        date: '2026-10-14',
+        encounterType: 'OPD',
+        reasonForVisit: 'Severe Sinus Pain & Non-Productive Cough',
+        summary: 'Prescribed 5-day Z-Pak and Benzonatate perles. Patient instructed on hydration and returning if fever spikes.',
+        relatedRecordIds: ['med-rob-azithro', 'med-rob-benzo'],
+        provenance: {
+          id: 'prov-enc-rob-1',
+          recordedAt: '2026-10-14T10:15:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 97.5,
+          hospitalOrClinic: 'Metropolitan Health Center',
+        },
+      },
+    ],
+    consents: [],
+    auditLogs: [],
+    breakGlassLogs: [],
+  },
+
+  'pat-eleanor-chen-6203': {
+    patient: {
+      id: 'pat-eleanor-chen-6203',
+      abhaId: '91-3849-2041-8812',
+      abhaAddress: 'eleanor.chen@abdm',
+      fullName: 'Eleanor Chen',
+      dateOfBirth: '1964-07-28',
+      age: 62,
+      gender: 'female',
+      bloodGroup: 'B+',
+      phone: '+91 98201 44829',
+      email: 'eleanor.chen@gmail.com',
+      emergencyContact: {
+        name: 'David Chen',
+        relationship: 'Son',
+        phone: '+91 98201 44830',
+      },
+      city: 'Mumbai',
+      state: 'Maharashtra',
+    },
+    medications: [
+      {
+        id: 'med-eleanor-lisinopril',
+        brandName: 'Zestril',
+        genericName: 'Lisinopril',
+        activeIngredients: [{ name: 'Lisinopril', strengthMg: 20, unit: 'mg' }],
+        dosageForm: 'Oral Tablet',
+        strength: '20 mg',
+        sig: '1 tab PO qam with water',
+        sigTranslated: 'Take 1 tablet every morning with water',
+        timing: 'morning',
+        relationToFood: 'after_food',
+        status: 'active',
+        prescribedDate: '2026-10-12',
+        prescribingDoctor: 'Dr. Marcus Sterling, MD, FACC',
+        prescribingFacility: 'St. Jude Heart & Vascular Institute',
+        refillsRemaining: 3,
+        therapeuticClass: 'ACE Inhibitor',
+        provenance: {
+          id: 'prov-el-1',
+          recordedAt: '2026-10-12T11:00:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 96.8,
+          hospitalOrClinic: 'St. Jude Heart & Vascular Institute',
+        },
+      },
+      {
+        id: 'med-eleanor-atorva',
+        brandName: 'Lipitor',
+        genericName: 'Atorvastatin Calcium',
+        activeIngredients: [{ name: 'Atorvastatin', strengthMg: 40, unit: 'mg' }],
+        dosageForm: 'Oral Tablet',
+        strength: '40 mg',
+        sig: '1 tab PO qhs at bedtime',
+        sigTranslated: 'Take 1 tablet once daily at bedtime',
+        timing: 'night',
+        relationToFood: 'anytime',
+        status: 'active',
+        prescribedDate: '2026-10-12',
+        prescribingDoctor: 'Dr. Marcus Sterling, MD, FACC',
+        prescribingFacility: 'St. Jude Heart & Vascular Institute',
+        refillsRemaining: 3,
+        therapeuticClass: 'Lipid Lowering Statin',
+        provenance: {
+          id: 'prov-el-2',
+          recordedAt: '2026-10-12T11:00:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 95.4,
+          hospitalOrClinic: 'St. Jude Heart & Vascular Institute',
+        },
+      },
+    ],
+    conditions: [
+      {
+        id: 'cond-el-htn',
+        code: {
+          coding: [{ system: 'http://snomed.info/sct', code: '59621000', display: 'Essential hypertension' }],
+          text: 'Essential Hypertension',
+        },
+        clinicalStatus: 'active',
+        verificationStatus: 'confirmed',
+        onsetDate: '2020-02-15',
+        recordedDate: '2026-10-12',
+        diagnosingDoctor: 'Dr. Marcus Sterling, MD',
+        diagnosingFacility: 'St. Jude Heart & Vascular Institute',
+        notes: 'BP controlled on Lisinopril 20mg.',
+        provenance: {
+          id: 'prov-cond-el-1',
+          recordedAt: '2026-10-12T11:00:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 99.0,
+          hospitalOrClinic: 'St. Jude Heart & Vascular Institute',
+        },
+      },
+    ],
+    allergies: [
+      {
+        id: 'alg-el-nkda',
+        substance: 'No Known Drug Allergies (NKDA)',
+        criticality: 'low',
+        category: 'medication',
+        manifestation: 'None reported',
+        verificationStatus: 'confirmed',
+        recordedDate: '2026-10-12',
+        provenance: {
+          id: 'prov-alg-el',
+          recordedAt: '2026-10-12T11:00:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 98.0,
+          hospitalOrClinic: 'St. Jude Heart & Vascular Institute',
+        },
+      },
+    ],
+    observations: [
+      {
+        id: 'obs-el-bp',
+        testName: 'Systolic / Diastolic Blood Pressure',
+        loincCode: '85354-9',
+        value: 126,
+        unit: 'mmHg',
+        referenceRange: { low: 90, high: 130, text: '<130/80 mmHg' },
+        interpretation: 'normal',
+        effectiveDate: '2026-10-12',
+        performer: 'St. Jude Cardiology Lab',
+        panelName: 'Vital Signs',
+        provenance: {
+          id: 'prov-obs-el-1',
+          recordedAt: '2026-10-12T11:10:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 99.2,
+          hospitalOrClinic: 'St. Jude Heart & Vascular Institute',
+        },
+      },
+    ],
+    encounters: [
+      {
+        id: 'enc-el-1',
+        hospitalName: 'St. Jude Heart & Vascular Institute',
+        doctorName: 'Dr. Marcus Sterling, MD',
+        specialty: 'Cardiology',
+        date: '2026-10-12',
+        encounterType: 'OPD',
+        reasonForVisit: 'Hypertension and Lipid Follow-up',
+        summary: 'Blood pressure 126/80 mmHg. Stable on current cardiovascular regimen with Lisinopril and Atorvastatin.',
+        relatedRecordIds: ['med-eleanor-lisinopril', 'med-eleanor-atorva'],
+        provenance: {
+          id: 'prov-enc-el-1',
+          recordedAt: '2026-10-12T11:20:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 98.5,
+          hospitalOrClinic: 'St. Jude Heart & Vascular Institute',
+        },
+      },
+    ],
+    consents: [],
+    auditLogs: [],
+    breakGlassLogs: [],
+  },
+
+  'pat-lucas-diaz-0604': {
+    patient: {
+      id: 'pat-lucas-diaz-0604',
+      abhaId: '91-1029-4820-9941',
+      abhaAddress: 'lucas.diaz@abdm',
+      fullName: 'Lucas Diaz',
+      dateOfBirth: '2020-03-14',
+      age: 6,
+      gender: 'male',
+      bloodGroup: 'O+',
+      phone: '+91 99882 10492',
+      email: 'maria.diaz.parent@gmail.com',
+      emergencyContact: {
+        name: 'Maria Diaz',
+        relationship: 'Mother / Legal Guardian',
+        phone: '+91 99882 10492',
+      },
+      city: 'Bengaluru',
+      state: 'Karnataka',
+    },
+    medications: [
+      {
+        id: 'med-lucas-augmentin',
+        brandName: 'Augmentin Oral Suspension',
+        genericName: 'Amoxicillin + Clavulanate Potassium',
+        activeIngredients: [
+          { name: 'Amoxicillin', strengthMg: 400, unit: 'mg' },
+          { name: 'Clavulanate', strengthMg: 57, unit: 'mg' },
+        ],
+        dosageForm: 'Oral Suspension (5mL)',
+        strength: '400mg / 57mg per 5mL',
+        sig: '5.5 mL PO BID with meals x 10d',
+        sigTranslated: 'Give 5.5 mL twice daily with meals for 10 days. Shake well and keep refrigerated.',
+        timing: 'bid',
+        relationToFood: 'with_food',
+        status: 'active',
+        prescribedDate: '2026-10-15',
+        prescribingDoctor: 'Dr. Sarah Jenkins, MD, FAAP',
+        prescribingFacility: "Children's Memorial Pediatric Care",
+        refillsRemaining: 0,
+        therapeuticClass: 'Pediatric Broad-Spectrum Antibiotic',
+        provenance: {
+          id: 'prov-lucas-1',
+          recordedAt: '2026-10-15T14:00:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 95.8,
+          hospitalOrClinic: "Children's Memorial Pediatric Care",
+          doctorName: 'Dr. Sarah Jenkins',
+          verifiedBy: 'Maria Diaz (Guardian Confirmed)',
+          sourceDocumentName: 'Augmentin_Pediatric_Rx.jpg',
+        },
+      },
+    ],
+    conditions: [
+      {
+        id: 'cond-lucas-otitis',
+        code: {
+          coding: [{ system: 'http://snomed.info/sct', code: '65363002', display: 'Otitis media' }],
+          text: 'Acute Suppurative Otitis Media (Right Ear)',
+        },
+        clinicalStatus: 'active',
+        verificationStatus: 'confirmed',
+        onsetDate: '2026-10-14',
+        recordedDate: '2026-10-15',
+        diagnosingDoctor: 'Dr. Sarah Jenkins, MD',
+        diagnosingFacility: "Children's Memorial Pediatric Care",
+        notes: 'Weight: 21 kg. Otoscopic exam reveals bulging tympanic membrane.',
+        provenance: {
+          id: 'prov-cond-lucas-1',
+          recordedAt: '2026-10-15T14:00:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 97.4,
+          hospitalOrClinic: "Children's Memorial Pediatric Care",
+        },
+      },
+    ],
+    allergies: [
+      {
+        id: 'alg-lucas-nkda',
+        substance: 'No Known Drug Allergies',
+        criticality: 'low',
+        category: 'medication',
+        manifestation: 'None',
+        verificationStatus: 'confirmed',
+        recordedDate: '2026-10-15',
+        provenance: {
+          id: 'prov-alg-lucas-1',
+          recordedAt: '2026-10-15T14:00:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 96.5,
+          hospitalOrClinic: "Children's Memorial Pediatric Care",
+        },
+      },
+    ],
+    observations: [
+      {
+        id: 'obs-lucas-weight',
+        testName: 'Pediatric Body Weight',
+        loincCode: '29463-7',
+        value: 21,
+        unit: 'kg',
+        referenceRange: { low: 18, high: 24, text: 'Normal 6yo range: 18 - 24 kg' },
+        interpretation: 'normal',
+        effectiveDate: '2026-10-15',
+        performer: "Children's Memorial Pediatrics",
+        panelName: 'Growth Chart',
+        provenance: {
+          id: 'prov-obs-lucas-1',
+          recordedAt: '2026-10-15T14:00:00Z',
+          tier: 'provider-verified',
+          confidenceScore: 99.5,
+          hospitalOrClinic: "Children's Memorial Pediatric Care",
+        },
+      },
+    ],
+    encounters: [
+      {
+        id: 'enc-lucas-1',
+        hospitalName: "Children's Memorial Pediatric Care",
+        doctorName: 'Dr. Sarah Jenkins, MD, FAAP',
+        specialty: 'Pediatric Medicine',
+        date: '2026-10-15',
+        encounterType: 'OPD',
+        reasonForVisit: 'Ear pain and low-grade fever',
+        summary: 'Right ear otitis media. Weight-adjusted Augmentin 5.5 mL BID prescribed for 10 days.',
+        relatedRecordIds: ['med-lucas-augmentin'],
+        provenance: {
+          id: 'prov-enc-lucas-1',
+          recordedAt: '2026-10-15T14:15:00Z',
+          tier: 'ocr-human-confirmed',
+          confidenceScore: 97.9,
+          hospitalOrClinic: "Children's Memorial Pediatric Care",
+        },
+      },
+    ],
+    consents: [],
+    auditLogs: [],
+    breakGlassLogs: [],
+  },
+};
+
+/**
+ * Searches for an existing patient profile by name using fuzzy match,
+ * or constructs a brand-new structured PatientProfile if not found.
+ */
+export function findOrCreatePatientRecord(
+  scannedName: string,
+  patients: Record<string, PatientRecordStore>,
+  supplementalInfo?: { age?: string; allergies?: string; gender?: string; date?: string }
+): { patientId: string; isNew: boolean; profile: PatientProfile } {
+  const cleanScanned = scannedName.trim().toLowerCase();
+
+  // Try to find matching patient
+  for (const [id, store] of Object.entries(patients)) {
+    const existingName = store.patient.fullName.toLowerCase();
+    if (
+      cleanScanned === existingName ||
+      cleanScanned.includes(existingName) ||
+      existingName.includes(cleanScanned)
+    ) {
+      return { patientId: id, isNew: false, profile: store.patient };
+    }
+  }
+
+  // Not found: generate new profile with standardized ABHA identifier
+  const newId = `pat-${cleanScanned.replace(/[^a-z0-9]/g, '-').slice(0, 16)}-${Date.now().toString(36)}`;
+  const randomAbhaPart = Math.floor(1000 + Math.random() * 9000);
+  const abhaId = `91-${randomAbhaPart}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const username = cleanScanned.split(' ')[0].toLowerCase() || 'user';
+
+  const newProfile: PatientProfile = {
+    id: newId,
+    abhaId,
+    abhaAddress: `${username}.${randomAbhaPart}@abdm`,
+    fullName: scannedName.trim() || 'New Patient',
+    dateOfBirth: '1985-01-01',
+    age: parseInt(supplementalInfo?.age || '40', 10) || 40,
+    gender: (supplementalInfo?.gender?.toLowerCase() as any) || 'male',
+    bloodGroup: 'B+',
+    phone: '+91 98' + Math.floor(10000000 + Math.random() * 90000000),
+    email: `${username}@gmail.com`,
+    emergencyContact: {
+      name: 'Family Member',
+      relationship: 'Emergency Contact',
+      phone: '+91 98' + Math.floor(10000000 + Math.random() * 90000000),
+    },
+    city: 'New Delhi',
+    state: 'Delhi',
+  };
+
+  return { patientId: newId, isNew: true, profile: newProfile };
+}
+

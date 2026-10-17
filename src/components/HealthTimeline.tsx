@@ -27,7 +27,9 @@ import {
   UnifiedLabObservation,
   UnifiedEncounter,
   VerificationTier,
+  PatientRecordStore,
 } from '../types/fhir';
+import { Users, UserPlus } from 'lucide-react';
 
 interface HealthTimelineProps {
   patient: PatientProfile;
@@ -40,6 +42,9 @@ interface HealthTimelineProps {
   onOpenShareModal?: (recordId: string) => void;
   onOpenExportModal?: () => void;
   onNavigateToTab?: (tab: any) => void;
+  currentPatientId?: string;
+  patientsDatabase?: Record<string, PatientRecordStore>;
+  onSelectPatient?: (patientId: string) => void;
 }
 
 export const HealthTimeline: React.FC<HealthTimelineProps> = ({
@@ -53,6 +58,9 @@ export const HealthTimeline: React.FC<HealthTimelineProps> = ({
   onOpenShareModal,
   onOpenExportModal,
   onNavigateToTab,
+  currentPatientId,
+  patientsDatabase,
+  onSelectPatient,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'medication' | 'condition' | 'observation' | 'encounter'>('all');
   const [selectedFacility, setSelectedFacility] = useState<string>('all');
@@ -196,25 +204,87 @@ export const HealthTimeline: React.FC<HealthTimelineProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Quick Patient Switcher Bar if database is provided */}
+      {patientsDatabase && onSelectPatient && (
+        <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-white/70 dark:bg-[#122B22]/70 rounded-2xl border border-[#3FA796]/30 shadow-sm backdrop-blur-sm">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#3FA796]" />
+            <span className="text-xs font-bold text-[#0F3D2E] dark:text-[#F4FAF3]">
+              Active Health Profile:
+            </span>
+            <span className="text-xs text-[#4B6E60] dark:text-[#95BDB0]">
+              Click to view another patient&apos;s records:
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {Object.entries(patientsDatabase).map(([id, store]) => {
+              const isSelected = id === currentPatientId || patient.id === store.patient.id;
+              const p = store.patient;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => onSelectPatient(id)}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                    isSelected
+                      ? 'bg-[#3FA796] text-white shadow-sm ring-2 ring-[#3FA796]/40 scale-[1.02]'
+                      : 'bg-[#F4FAF3] dark:bg-[#071711] text-[#0F3D2E] dark:text-[#F4FAF3] border border-[#3FA796]/20 hover:border-[#3FA796]/60'
+                  }`}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-bold ${
+                      isSelected
+                        ? 'bg-white/20 text-white'
+                        : 'bg-[#3FA796]/20 text-[#3FA796]'
+                    }`}
+                  >
+                    {p.fullName.split(' ').map((n) => n[0]).join('')}
+                  </span>
+                  <span>{p.fullName}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full ${
+                      isSelected ? 'bg-white/20' : 'bg-slate-200 dark:bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {store.medications.length} meds
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Patient Unified Health Identity Strip */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-[var(--bg-card)] border border-[#3FA796]/25 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center font-bold text-teal-400 text-lg">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#0F3D2E] to-[#3FA796] flex items-center justify-center font-bold text-white text-xl shadow-md shadow-[#0F3D2E]/15">
             {patient.fullName.split(' ').map((n) => n[0]).join('')}
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h2 className="text-lg font-bold text-white tracking-tight">{patient.fullName}</h2>
-              <span className="text-xs text-slate-400 font-mono">
+              <h2 className="text-xl font-extrabold text-[#0F3D2E] dark:text-[#F4FAF3] tracking-tight">
+                {patient.fullName}
+              </h2>
+              <span className="text-xs text-[#4B6E60] dark:text-[#95BDB0] font-mono px-2 py-0.5 rounded-full bg-[#3FA796]/15 font-semibold">
                 {patient.age}y · {patient.gender.toUpperCase()} · Blood {patient.bloodGroup}
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-slate-400">
-              <span className="font-mono text-teal-300">ABHA: {patient.abhaId}</span>
+            <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-[#4B6E60] dark:text-[#95BDB0]">
+              <span className="font-mono font-bold text-[#3FA796] dark:text-[#B8E986]">
+                ABHA: {patient.abhaId}
+              </span>
               <span aria-hidden="true">·</span>
               <span>{patient.abhaAddress}</span>
               <span aria-hidden="true">·</span>
               <span>{patient.city}, India</span>
+              <span aria-hidden="true">·</span>
+              <span className="text-[#E4572E] font-medium">
+                {allergies.length > 0
+                  ? `Allergies: ${allergies.map((a) => a.substance).join(', ')}`
+                  : 'NKDA'}
+              </span>
             </div>
           </div>
         </div>
@@ -223,15 +293,15 @@ export const HealthTimeline: React.FC<HealthTimelineProps> = ({
           <button
             type="button"
             onClick={onOpenExportModal}
-            className="px-3.5 py-2 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-750 border border-slate-700 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            className="px-3.5 py-2 text-xs font-semibold text-[#0F3D2E] dark:text-[#F4FAF3] bg-white/80 dark:bg-[#122B22] hover:bg-white dark:hover:bg-[#17382D] border border-[#3FA796]/30 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap shadow-sm"
           >
-            <Download className="w-3.5 h-3.5 text-slate-400" />
+            <Download className="w-3.5 h-3.5 text-[#3FA796]" />
             <span>Export FHIR & PDF</span>
           </button>
           <button
             type="button"
             onClick={() => onNavigateToTab?.('consent')}
-            className="px-3.5 py-2 text-xs font-semibold text-slate-900 bg-teal-400 hover:bg-teal-300 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap"
+            className="px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-[#0F3D2E] to-[#3FA796] hover:opacity-95 rounded-xl transition-all flex items-center gap-1.5 whitespace-nowrap shadow-md shadow-[#0F3D2E]/15"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span>Share Records</span>
