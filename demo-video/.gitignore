@@ -1,0 +1,8 @@
+node_modules/
+build/
+out/
+dist/
+.remotion/
+.cache/
+*.log
+.DS_Store
