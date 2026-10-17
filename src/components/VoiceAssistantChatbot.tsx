@@ -80,10 +80,13 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       stopAllAudio();
       if (microphoneStreamRef.current) {
         microphoneStreamRef.current.getTracks().forEach((track) => track.stop());
+        microphoneStreamRef.current = null;
       }
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
       }
+      analyserRef.current = null;
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -137,6 +140,11 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       // Connect Microphone for AnalyserNode Visualizer
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       microphoneStreamRef.current = stream;
+
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioCtx();
@@ -229,6 +237,11 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       microphoneStreamRef.current.getTracks().forEach((track) => track.stop());
       microphoneStreamRef.current = null;
     }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
     setAudioLevel(0);
     setInterimTranscript('');
     if (status === 'listening') {

@@ -47,8 +47,10 @@ app.post('/api/scan-prescription', async (req: Request, res: Response) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', model = 'gemini-3.8-flash', imageMeta } = req.body;
 
-    if (!imageBase64) {
-      return res.status(400).json({ error: 'Missing imageBase64 data in request body' });
+    if (!imageBase64 || typeof imageBase64 !== 'string' || imageBase64.length <= 50 || imageBase64.length > 40 * 1024 * 1024) {
+      return res.status(400).json({
+        error: 'Invalid or missing imageBase64 data in request body: must be a base64 string between 50 bytes and 40MB',
+      });
     }
 
     // Strip data URL prefix if present
@@ -723,7 +725,7 @@ ${patientSummary}`;
 
     // Step 1: Generate conversational text response in matching language
     const chatResponse = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-2.5-flash',
       contents: message,
       config: {
         systemInstruction,
@@ -743,46 +745,13 @@ ${patientSummary}`;
       }
     }
 
-    // Step 2: Generate natural speech audio via Gemini TTS
-    let audioBase64: string | null = null;
-    try {
-      const ttsResponse = await ai.models.generateContent({
-        model: 'gemini-3.8-flash-lite-tts',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: replyText,
-                speechMetadata: {
-                  style: 'Warm, clear, empathetic Indian medical assistant',
-                },
-              },
-            ],
-          },
-        ],
-        config: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
-        },
-      });
-
-      audioBase64 = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-    } catch (ttsErr) {
-      console.warn('Gemini TTS generation notice (falling back to client audio):', ttsErr);
-      audioBase64 = null;
-    }
-
+    // Step 2: Audio synthesis is handled reliably on the client via browser SpeechSynthesis
     res.json({
       success: true,
       replyText,
       detectedLanguage,
-      audioBase64,
-      mimeType: audioBase64 ? 'audio/wav' : null,
+      audioBase64: null,
+      mimeType: null,
     });
   } catch (err: unknown) {
     console.error('Voice chat error:', err);
@@ -792,31 +761,8 @@ ${patientSummary}`;
 });
 
 import http from 'http';
-import { WebSocketServer } from 'ws';
 
 const server = http.createServer(app);
-
-// WebSocket server for real-time live audio streaming
-const wss = new WebSocketServer({ server, path: '/ws/live-audio' });
-
-wss.on('connection', (ws) => {
-  console.log('[WebSocket] Client connected to /ws/live-audio');
-
-  ws.on('message', async (data) => {
-    try {
-      const payload = JSON.parse(data.toString());
-      if (payload.type === 'ping') {
-        ws.send(JSON.stringify({ type: 'pong' }));
-      }
-    } catch (e) {
-      // Ignore malformed ping
-    }
-  });
-
-  ws.on('close', () => {
-    console.log('[WebSocket] Client disconnected from /ws/live-audio');
-  });
-});
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
@@ -834,6 +780,6 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`MediScript Server & WebSocket listening on http://0.0.0.0:${PORT}`);
+  console.log(`MediScript Server listening on http://0.0.0.0:${PORT}`);
 });
 

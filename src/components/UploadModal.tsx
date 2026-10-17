@@ -41,12 +41,24 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
+      if (isPdf) {
+        onUploadImage(result, 'application/pdf', { width: 1200, height: 1600 });
+        onClose();
+        return;
+      }
+
       const img = new Image();
       img.onload = () => {
         onUploadImage(result, file.type, { width: img.width, height: img.height });
+        onClose();
+      };
+      img.onerror = () => {
+        onUploadImage(result, file.type);
         onClose();
       };
       img.src = result;
@@ -235,12 +247,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               </div>
               <h4 className="text-base font-bold text-[#0F3D2E] dark:text-[#F4FAF3]">Upload Handwritten Prescription</h4>
               <p className="text-xs text-[#4B6E60] dark:text-[#95BDB0] max-w-sm mt-1 mb-4">
-                Drag and drop a photo or scan of a prescription pad, or select an image file from your device (PNG, JPG, WebP)
+                Drag and drop a photo or scan of a prescription pad, or select an image or PDF file from your device (PNG, JPG, WebP, PDF)
               </p>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf"
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -250,7 +262,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 disabled={isProcessing}
                 className="px-5 py-2.5 text-xs font-bold text-white bg-[#3FA796] hover:bg-[#4CB8A4] rounded-xl transition-all shadow-md shadow-[#3FA796]/20"
               >
-                Browse Image File
+                Browse File
               </button>
             </div>
           )}

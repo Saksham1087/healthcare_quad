@@ -272,7 +272,7 @@ export default function App() {
         allergies: scanData.patient.allergies,
         gender: scanData.patient.gender,
       });
-      setOcrTargetPatientId(match.patientId);
+      setOcrTargetPatientId(match.isNew ? '__NEW__' : match.patientId);
     }
   }, [scanData]);
 
@@ -440,7 +440,7 @@ export default function App() {
       activeIngredients: [
         {
           name: m.genericName || m.brandName,
-          strengthMg: parseInt(m.dosageStrength, 10) || 500,
+          strengthMg: parseFloat(m.dosageStrength.match(/[\d.]+/)?.[0] || '0') || 500,
           unit: 'mg',
         },
       ],
@@ -727,6 +727,9 @@ export default function App() {
 
   // Simulate cryptographic erasure for current patient
   const handleSimulateErasure = () => {
+    if (!window.confirm(`Are you sure you want to permanently erase all clinical records for ${patient.fullName}? This action is irreversible.`)) {
+      return;
+    }
     const auditEvent: AuditTrailEvent = {
       id: `aud-${Date.now()}`,
       timestamp: new Date().toISOString(),

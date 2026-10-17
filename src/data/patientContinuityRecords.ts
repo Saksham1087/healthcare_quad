@@ -1082,22 +1082,50 @@ export function findOrCreatePatientRecord(
   patients: Record<string, PatientRecordStore>,
   supplementalInfo?: { age?: string; allergies?: string; gender?: string; date?: string }
 ): { patientId: string; isNew: boolean; profile: PatientProfile } {
-  const cleanScanned = scannedName.trim().toLowerCase();
+  const cleanScanned = (scannedName || '').trim().toLowerCase();
 
-  // Try to find matching patient
-  for (const [id, store] of Object.entries(patients)) {
-    const existingName = store.patient.fullName.toLowerCase();
-    if (
-      cleanScanned === existingName ||
-      cleanScanned.includes(existingName) ||
-      existingName.includes(cleanScanned)
-    ) {
-      return { patientId: id, isNew: false, profile: store.patient };
+  // Guard: Never match if scanned name is empty, too short, or a generic placeholder
+  const genericPlaceholders = ['patient', 'new patient', 'unknown', 'n/a', 'na', 'none', 'dr', 'doctor', 'mr', 'mrs', 'ms'];
+  const isGeneric = !cleanScanned || cleanScanned.length < 3 || genericPlaceholders.includes(cleanScanned);
+
+  if (!isGeneric) {
+    const scannedParts = cleanScanned.split(/\s+/).filter(Boolean);
+
+    // Try to find matching patient
+    for (const [id, store] of Object.entries(patients)) {
+      const existingName = store.patient.fullName.trim().toLowerCase();
+      if (!existingName || existingName.length < 3) continue;
+
+      // 1. Exact match
+      if (cleanScanned === existingName) {
+        return { patientId: id, isNew: false, profile: store.patient };
+      }
+
+      // 2. Both first and last name match (when multi-word)
+      const existingParts = existingName.split(/\s+/).filter(Boolean);
+      if (
+        scannedParts.length >= 2 &&
+        existingParts.length >= 2 &&
+        scannedParts[0] === existingParts[0] &&
+        scannedParts[scannedParts.length - 1] === existingParts[existingParts.length - 1]
+      ) {
+        return { patientId: id, isNew: false, profile: store.patient };
+      }
+
+      // 3. Substring match only if length is at least 5 and it matches existingName
+      if (
+        cleanScanned.length >= 5 &&
+        existingName.length >= 5 &&
+        (cleanScanned.includes(existingName) || existingName.includes(cleanScanned))
+      ) {
+        return { patientId: id, isNew: false, profile: store.patient };
+      }
     }
   }
 
   // Not found: generate new profile with standardized ABHA identifier
-  const newId = `pat-${cleanScanned.replace(/[^a-z0-9]/g, '-').slice(0, 16)}-${Date.now().toString(36)}`;
+  const cleanIdPart = cleanScanned.replace(/[^a-z0-9]/g, '-').slice(0, 16) || 'new-patient';
+  const newId = `pat-${cleanIdPart}-${Date.now().toString(36)}`;
   const randomAbhaPart = Math.floor(1000 + Math.random() * 9000);
   const abhaId = `91-${randomAbhaPart}-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
   const username = cleanScanned.split(' ')[0].toLowerCase() || 'user';
