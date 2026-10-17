@@ -803,14 +803,57 @@ const wss = new WebSocketServer({ server, path: '/ws/live-audio' });
 wss.on('connection', (ws) => {
   console.log('[WebSocket] Client connected to /ws/live-audio');
 
-  ws.on('message', async (data) => {
+  // Per-connection recording context (one recording per push-to-talk session)
+  const pendingMeta: { mimeType?: string; lang?: string } = {};
+
+  ws.on('message', async (data, isBinary) => {
     try {
+      if (isBinary) {
+        // Binary audio frame: transcribe with Gemini server-side. This path lets
+        // Brave / BrowserOS / Chromium builds without cloud SpeechRecognition
+        // still use voice input via the existing push-to-talk recorder.
+        if (!ai) {
+          ws.send(JSON.stringify({ type: 'transcription_error', error: 'Gemini API key not configured' }));
+          return;
+        }
+        const audioBuffer = data as Buffer;
+        if (!audioBuffer.length) return;
+
+        const languageHint =
+          pendingMeta.lang && pendingMeta.lang !== 'auto'
+            ? ` The speaker is speaking ${pendingMeta.lang}.`
+            : ' Auto-detect whether the speaker is speaking English, Hindi, or Marathi.';
+        const instructions =
+          `Transcribe the spoken words in this audio exactly as spoken, in the original language and script. ` +
+          `Return ONLY the transcription text, no quotes, no explanations.${languageHint}`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { inlineData: { data: audioBuffer.toString('base64'), mimeType: pendingMeta.mimeType || 'audio/webm' } },
+                { text: instructions },
+              ],
+            },
+          ],
+          config: { temperature: 0 },
+        });
+
+        ws.send(JSON.stringify({ type: 'transcription', text: response.text?.trim() || '' }));
+        return;
+      }
+
       const payload = JSON.parse(data.toString());
       if (payload.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
+      } else if (payload.type === 'transcribe-start') {
+        pendingMeta.mimeType = payload.mimeType;
+        pendingMeta.lang = payload.lang;
       }
     } catch (e) {
-      // Ignore malformed ping
+      // Ignore malformed frames
     }
   });
 

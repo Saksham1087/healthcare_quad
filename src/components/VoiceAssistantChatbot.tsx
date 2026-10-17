@@ -66,6 +66,8 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const pendingAudioChunksRef = useRef<Blob[]>([]);
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -120,6 +122,88 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     }
   };
 
+  // Finalize the parallel recording and hand its blob back for fallback transcription
+  const finalizeRecording = (): Promise<Blob | null> =>
+    new Promise((resolve) => {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === 'inactive') {
+        mediaRecorderRef.current = null;
+        resolve(null);
+        return;
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(pendingAudioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        mediaRecorderRef.current = null;
+        pendingAudioChunksRef.current = [];
+        resolve(blob.size > 0 ? blob : null);
+      };
+      try {
+        recorder.stop();
+      } catch {
+        mediaRecorderRef.current = null;
+        resolve(null);
+      }
+    });
+
+  // Server-side transcription over /ws/live-audio (Gemini, when browser STT fails)
+  const transcribeWithGemini = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${proto}//${window.location.host}/ws/live-audio`);
+      let settled = false;
+
+      const fail = (message: string) => {
+        if (settled) return;
+        settled = true;
+        try {
+          ws.close();
+        } catch {}
+        reject(new Error(message));
+      };
+      const done = (text: string) => {
+        if (settled) return;
+        settled = true;
+        try {
+          ws.close();
+        } catch {}
+        resolve(text);
+      };
+      const guard = setTimeout(() => fail('Transcription timed out'), 20000);
+
+      ws.onerror = () => {
+        clearTimeout(guard);
+        fail('Transcription connection failed');
+      };
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            type: 'transcribe-start',
+            lang: selectedLang,
+            mimeType: blob.type.split(';')[0] || 'audio/webm',
+          })
+        );
+        blob.arrayBuffer().then((buf) => ws.send(buf));
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'transcription') {
+            clearTimeout(guard);
+            done(String(msg.text || ''));
+          } else if (msg.type === 'transcription_error') {
+            clearTimeout(guard);
+            fail(String(msg.error || 'Transcription failed'));
+          }
+        } catch {
+          // Ignore malformed frames
+        }
+      };
+      ws.onclose = () => {
+        clearTimeout(guard);
+        fail('Connection closed before transcription completed');
+      };
+    });
+
   // Start Mic Listening with Audio Waveform Visualizer
   const startListening = async () => {
     stopAllAudio();
@@ -147,6 +231,20 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       analyser.fftSize = 64;
       source.connect(analyser);
       analyserRef.current = analyser;
+
+      // Record mic audio in parallel so Gemini server-side transcription can be
+      // used when the browser's cloud SpeechRecognition is unavailable
+      // (Brave, BrowserOS, or Chromium builds without bundled speech keys)
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')) {
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+        const recorder = new MediaRecorder(stream, { mimeType });
+        pendingAudioChunksRef.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) pendingAudioChunksRef.current.push(e.data);
+        };
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+      }
 
       // Loop to update audio waveform level
       const updateWaveform = () => {
@@ -186,16 +284,37 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
         setInterimTranscript(interim);
 
         if (final.trim()) {
+          void finalizeRecording();
           stopListening();
           handleUserQuery(final.trim());
         }
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = async (event: any) => {
         console.warn('Speech recognition notice:', event.error);
+        // Finalize the parallel recording before stopListening tears it down
+        const recordedBlob = await finalizeRecording();
         stopListening();
         if (event.error === 'not-allowed') {
           setErrorMessage('Microphone access was denied. Please allow microphone permissions in your browser settings.');
+        } else if (event.error === 'network' || event.error === 'service-not-allowed') {
+          // Brave / BrowserOS / Chromium builds lack the browser cloud speech
+          // engine — fall back to Gemini transcription of the recorded audio
+          try {
+            if (recordedBlob) {
+              setStatus('thinking');
+              const text = (await transcribeWithGemini(recordedBlob)).trim();
+              if (text) {
+                handleUserQuery(text);
+                return;
+              }
+            }
+          } catch (fallbackErr) {
+            console.warn('Gemini transcription fallback notice:', fallbackErr);
+          }
+          setErrorMessage(
+            'Voice input is unavailable in this browser: its cloud speech engine was unreachable (common in Brave, BrowserOS, and some Chromium builds), and Gemini transcription did not return a result. Type your question below, or open MediScript in Google Chrome for voice input.'
+          );
         } else if (event.error !== 'no-speech') {
           setErrorMessage(`Audio input notice: ${event.error}`);
         }
@@ -224,6 +343,13 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
+    }
+    if (mediaRecorderRef.current) {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {}
+      mediaRecorderRef.current = null;
+      pendingAudioChunksRef.current = [];
     }
     if (microphoneStreamRef.current) {
       microphoneStreamRef.current.getTracks().forEach((track) => track.stop());
