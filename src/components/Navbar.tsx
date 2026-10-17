@@ -73,13 +73,14 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Zone 2: Clean single-line text navigation links */}
-      <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-[#4B6E60] dark:text-[#95BDB0]">
+      <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-[#1E4D3B] dark:text-[#A3C5B8]">
         <button
           type="button"
           onClick={() => setActiveTab('timeline')}
-          className={`hover:text-[#0F3D2E] dark:hover:text-[#F4FAF3] transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
+          aria-current={activeTab === 'timeline' ? 'page' : undefined}
+          className={`hover:text-[#0E2A21] dark:hover:text-[#F3EBD3] transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
             activeTab === 'timeline'
-              ? 'text-[#3FA796] border-b-2 border-[#3FA796] font-bold'
+              ? 'text-[#2D6A4F] dark:text-[#52B788] border-b-2 border-[#2D6A4F] dark:border-[#52B788] font-bold'
               : ''
           }`}
         >
@@ -89,9 +90,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('scanner')}
-          className={`hover:text-[#0F3D2E] dark:hover:text-[#F4FAF3] transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
+          aria-current={activeTab === 'scanner' ? 'page' : undefined}
+          className={`hover:text-[#0E2A21] dark:hover:text-[#F3EBD3] transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
             activeTab === 'scanner'
-              ? 'text-[#3FA796] border-b-2 border-[#3FA796] font-bold'
+              ? 'text-[#2D6A4F] dark:text-[#52B788] border-b-2 border-[#2D6A4F] dark:border-[#52B788] font-bold'
               : ''
           }`}
         >
@@ -101,9 +103,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('safety')}
-          className={`hover:text-[#0F3D2E] dark:hover:text-[#F4FAF3] transition-colors whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
+          aria-current={activeTab === 'safety' ? 'page' : undefined}
+          className={`hover:text-[#0E2A21] dark:hover:text-[#F3EBD3] transition-colors whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
             activeTab === 'safety'
-              ? 'text-[#3FA796] border-b-2 border-[#3FA796] font-bold'
+              ? 'text-[#2D6A4F] dark:text-[#52B788] border-b-2 border-[#2D6A4F] dark:border-[#52B788] font-bold'
               : ''
           }`}
         >
@@ -118,15 +121,16 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('consent')}
-          className={`hover:text-[#0F3D2E] dark:hover:text-[#F4FAF3] transition-colors whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
+          aria-current={activeTab === 'consent' ? 'page' : undefined}
+          className={`hover:text-[#0E2A21] dark:hover:text-[#F3EBD3] transition-colors whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
             activeTab === 'consent'
-              ? 'text-[#3FA796] border-b-2 border-[#3FA796] font-bold'
+              ? 'text-[#2D6A4F] dark:text-[#52B788] border-b-2 border-[#2D6A4F] dark:border-[#52B788] font-bold'
               : ''
           }`}
         >
           <span>Consent & Share</span>
           {activeConsentCount > 0 && (
-            <span className="inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-bold rounded bg-[#3FA796]/20 text-[#3FA796] dark:text-[#B8E986] border border-[#3FA796]/30 tabular-nums">
+            <span className="inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-bold rounded bg-[#2D6A4F]/15 text-[#2D6A4F] dark:text-[#C5E99B] border border-[#2D6A4F]/25 tabular-nums">
               {activeConsentCount} active
             </span>
           )}
@@ -135,9 +139,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('emergency')}
-          className={`hover:text-[#0F3D2E] dark:hover:text-[#F4FAF3] transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
+          aria-current={activeTab === 'emergency' ? 'page' : undefined}
+          className={`hover:text-[#0E2A21] dark:hover:text-[#F3EBD3] transition-colors whitespace-nowrap shrink-0 pb-0.5 ${
             activeTab === 'emergency'
-              ? 'text-[#3FA796] border-b-2 border-[#3FA796] font-bold'
+              ? 'text-[#2D6A4F] dark:text-[#52B788] border-b-2 border-[#2D6A4F] dark:border-[#52B788] font-bold'
               : ''
           }`}
         >
@@ -147,9 +152,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <button
           type="button"
           onClick={() => setActiveTab('audit')}
-          className={`hover:text-[#0F3D2E] dark:hover:text-[#F4FAF3] transition-colors whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
+          aria-current={activeTab === 'audit' ? 'page' : undefined}
+          className={`hover:text-[#0E2A21] dark:hover:text-[#F3EBD3] transition-colors whitespace-nowrap shrink-0 pb-0.5 flex items-center gap-1.5 ${
             activeTab === 'audit'
-              ? 'text-[#3FA796] border-b-2 border-[#3FA796] font-bold'
+              ? 'text-[#2D6A4F] dark:text-[#52B788] border-b-2 border-[#2D6A4F] dark:border-[#52B788] font-bold'
               : ''
           }`}
         >
