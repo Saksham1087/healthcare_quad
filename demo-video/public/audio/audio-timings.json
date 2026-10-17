@@ -1,0 +1,169 @@
+{
+  "metadata": {
+    "fps": 30,
+    "targetDurationSeconds": 210.0,
+    "targetDurationFrames": 6300,
+    "totalCompositionDurationSeconds": 210.0,
+    "totalCompositionFrames": 6300,
+    "bgMusicFile": "bg_music.mp3",
+    "bgMusicDurationSeconds": 210.103
+  },
+  "audioFiles": {
+    "act1_crisis.mp3": {
+      "durationSeconds": 30.528,
+      "durationFrames": 916
+    },
+    "act2_herbarium.mp3": {
+      "durationSeconds": 26.64,
+      "durationFrames": 800
+    },
+    "act3_ocr_safety.mp3": {
+      "durationSeconds": 25.824,
+      "durationFrames": 775
+    },
+    "act4_voice_intro.mp3": {
+      "durationSeconds": 21.768,
+      "durationFrames": 654
+    },
+    "act4_patient_hindi.mp3": {
+      "durationSeconds": 6.0,
+      "durationFrames": 180
+    },
+    "act4_bulba_hindi.mp3": {
+      "durationSeconds": 8.088,
+      "durationFrames": 243
+    },
+    "act4_patient_marathi.mp3": {
+      "durationSeconds": 5.232,
+      "durationFrames": 157
+    },
+    "act4_bulba_marathi.mp3": {
+      "durationSeconds": 8.592,
+      "durationFrames": 258
+    },
+    "act5_consent_dpdp.mp3": {
+      "durationSeconds": 33.144,
+      "durationFrames": 995
+    },
+    "act6_outro.mp3": {
+      "durationSeconds": 16.152,
+      "durationFrames": 485
+    },
+    "bg_music.mp3": {
+      "durationSeconds": 210.103,
+      "durationFrames": 6304
+    }
+  },
+  "scenes": [
+    {
+      "act": 1,
+      "name": "Act 1: The Crisis of Fragmented Indian Healthcare",
+      "startFrame": 0,
+      "durationFrames": 1050,
+      "startTimeSeconds": 0.0,
+      "durationSeconds": 35.0,
+      "voiceover": {
+        "file": "act1_crisis.mp3",
+        "startFrame": 15,
+        "durationFrames": 916
+      }
+    },
+    {
+      "act": 2,
+      "name": "Act 2: MediScript Herbarium Sanctuary & Sovereign Partitions",
+      "startFrame": 1050,
+      "durationFrames": 900,
+      "startTimeSeconds": 35.0,
+      "durationSeconds": 30.0,
+      "voiceover": {
+        "file": "act2_herbarium.mp3",
+        "startFrame": 1065,
+        "durationFrames": 800
+      }
+    },
+    {
+      "act": 3,
+      "name": "Act 3: Multimodal Spatial OCR & Clinical Safety Engine",
+      "startFrame": 1950,
+      "durationFrames": 900,
+      "startTimeSeconds": 65.0,
+      "durationSeconds": 30.0,
+      "voiceover": {
+        "file": "act3_ocr_safety.mp3",
+        "startFrame": 1965,
+        "durationFrames": 775
+      }
+    },
+    {
+      "act": 4,
+      "name": "Act 4: BulbaCare Trilingual Clinical Companion (EN, HI, MR)",
+      "startFrame": 2850,
+      "durationFrames": 1700,
+      "startTimeSeconds": 95.0,
+      "durationSeconds": 56.667,
+      "dialogueCues": [
+        {
+          "character": "Narrator",
+          "language": "English",
+          "file": "act4_voice_intro.mp3",
+          "startFrame": 2865,
+          "durationFrames": 654
+        },
+        {
+          "character": "Patient (Rajesh)",
+          "language": "Hindi",
+          "file": "act4_patient_hindi.mp3",
+          "startFrame": 3549,
+          "durationFrames": 180
+        },
+        {
+          "character": "BulbaCare",
+          "language": "Hindi",
+          "file": "act4_bulba_hindi.mp3",
+          "startFrame": 3753,
+          "durationFrames": 243
+        },
+        {
+          "character": "Patient (Rajesh)",
+          "language": "Marathi",
+          "file": "act4_patient_marathi.mp3",
+          "startFrame": 4032,
+          "durationFrames": 157
+        },
+        {
+          "character": "BulbaCare",
+          "language": "Marathi",
+          "file": "act4_bulba_marathi.mp3",
+          "startFrame": 4213,
+          "durationFrames": 258
+        }
+      ]
+    },
+    {
+      "act": 5,
+      "name": "Act 5: Data Sovereignty, Dynamic PINs & DPDP Section 12",
+      "startFrame": 4550,
+      "durationFrames": 1100,
+      "startTimeSeconds": 151.667,
+      "durationSeconds": 36.667,
+      "voiceover": {
+        "file": "act5_consent_dpdp.mp3",
+        "startFrame": 4565,
+        "durationFrames": 995
+      }
+    },
+    {
+      "act": 6,
+      "name": "Act 6: Sovereign Clinical Vision & Grand Outro",
+      "startFrame": 5650,
+      "durationFrames": 650,
+      "startTimeSeconds": 188.333,
+      "durationSeconds": 21.667,
+      "voiceover": {
+        "file": "act6_outro.mp3",
+        "startFrame": 5665,
+        "durationFrames": 485
+      }
+    }
+  ]
+}

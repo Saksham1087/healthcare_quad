@@ -47,8 +47,10 @@ app.post('/api/scan-prescription', async (req: Request, res: Response) => {
   try {
     const { imageBase64, mimeType = 'image/jpeg', model = 'gemini-3.8-flash', imageMeta } = req.body;
 
-    if (!imageBase64) {
-      return res.status(400).json({ error: 'Missing imageBase64 data in request body' });
+    if (!imageBase64 || typeof imageBase64 !== 'string' || imageBase64.length <= 50 || imageBase64.length > 40 * 1024 * 1024) {
+      return res.status(400).json({
+        error: 'Invalid or missing imageBase64 data in request body: must be a base64 string between 50 bytes and 40MB',
+      });
     }
 
     // Strip data URL prefix if present

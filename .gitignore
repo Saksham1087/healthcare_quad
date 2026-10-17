@@ -7,3 +7,13 @@ coverage/
 .env*
 graphify-out/
 !.env.example
+.cache/
+.remotion/
+**/.remotion/
+
+# Remotion demo video ignores
+demo-video/node_modules/
+demo-video/build/
+demo-video/out/
+demo-video/dist/
+demo-video/.cache/

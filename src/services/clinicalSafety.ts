@@ -227,7 +227,7 @@ export function evaluateClinicalSafety(
       const isCrossProvider = new Set(data.prescriptions.map((p) => p.med.prescribingFacility)).size > 1;
 
       alerts.push({
-        id: `alert-dupe-${ingredient}-${Date.now()}`,
+        id: `alert-dupe-${ingredient}-${data.prescriptions.map((p) => p.med.id).sort().join('-')}`,
         severity: ingredient === 'paracetamol' || ingredient === 'telmisartan' ? 'critical' : 'major',
         type: 'duplicate-ingredient',
         title: `Duplicate Active Ingredient: ${ingredient.toUpperCase()}`,
@@ -283,32 +283,56 @@ export function evaluateClinicalSafety(
   }
 
   // 3. Drug-Drug Interactions (e.g., Aspirin + NSAID / Ibuprofen, ARB + ACE-i)
+  const seenInteractions = new Set<string>();
+
   for (let i = 0; i < activeMeds.length; i++) {
     for (let j = i + 1; j < activeMeds.length; j++) {
       const medA = activeMeds[i];
       const medB = activeMeds[j];
+      const pairKey = [medA.id, medB.id].sort().join('-');
+
+      if (seenInteractions.has(pairKey)) {
+        continue;
+      }
+
       const defA = lookupDrugDefinition(medA.brandName) || lookupDrugDefinition(medA.genericName);
+      const defB = lookupDrugDefinition(medB.brandName) || lookupDrugDefinition(medB.genericName);
 
-      if (defA?.majorInteractionsWith) {
-        const matches = defA.majorInteractionsWith.some(
-          (target) =>
-            medB.genericName.toLowerCase().includes(target.toLowerCase()) ||
-            medB.brandName.toLowerCase().includes(target.toLowerCase())
-        );
-
-        if (matches) {
-          alerts.push({
-            id: `alert-ddi-${medA.id}-${medB.id}`,
-            severity: 'major',
-            type: 'drug-drug-interaction',
-            title: `Drug Interaction: ${medA.brandName} + ${medB.brandName}`,
-            description: `Concurrent administration of ${medA.brandName} (${medA.genericName}) and ${medB.brandName} (${medB.genericName}) has known pharmacological interference.`,
-            involvedMedications: [medA.brandName, medB.brandName],
-            clinicalRationale: `Interference between active drug classes increases gastrointestinal bleeding or blunts therapeutic efficacy.`,
-            recommendedAction: `Space administration or adjust dosing schedule under clinical supervision.`,
-            detectedAt: new Date().toISOString(),
-          });
+      const aInteractsWithB = defA?.majorInteractionsWith?.some(
+        (target) => {
+          const t = target.toLowerCase();
+          return (
+            medB.genericName.toLowerCase().includes(t) ||
+            medB.brandName.toLowerCase().includes(t) ||
+            medB.activeIngredients?.some((ing) => ing.name.toLowerCase().includes(t))
+          );
         }
+      );
+
+      const bInteractsWithA = defB?.majorInteractionsWith?.some(
+        (target) => {
+          const t = target.toLowerCase();
+          return (
+            medA.genericName.toLowerCase().includes(t) ||
+            medA.brandName.toLowerCase().includes(t) ||
+            medA.activeIngredients?.some((ing) => ing.name.toLowerCase().includes(t))
+          );
+        }
+      );
+
+      if (aInteractsWithB || bInteractsWithA) {
+        seenInteractions.add(pairKey);
+        alerts.push({
+          id: `alert-ddi-${pairKey}`,
+          severity: 'major',
+          type: 'drug-drug-interaction',
+          title: `Drug Interaction: ${medA.brandName} + ${medB.brandName}`,
+          description: `Concurrent administration of ${medA.brandName} (${medA.genericName}) and ${medB.brandName} (${medB.genericName}) has known pharmacological interference.`,
+          involvedMedications: [medA.brandName, medB.brandName],
+          clinicalRationale: `Interference between active drug classes increases gastrointestinal bleeding or blunts therapeutic efficacy.`,
+          recommendedAction: `Space administration or adjust dosing schedule under clinical supervision.`,
+          detectedAt: new Date().toISOString(),
+        });
       }
     }
   }

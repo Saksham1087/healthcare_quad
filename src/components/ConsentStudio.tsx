@@ -96,8 +96,11 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
     onCreateConsent(newConsent);
   };
 
-  const activeConsents = consents.filter((c) => c.status === 'active');
-  const revokedConsents = consents.filter((c) => c.status !== 'active');
+  const isExpired = (c: EphemeralConsentShare) =>
+    c.status === 'expired' || (Boolean(c.expiresAt) && new Date(c.expiresAt).getTime() <= Date.now());
+
+  const activeConsents = consents.filter((c) => c.status === 'active' && !isExpired(c));
+  const revokedConsents = consents.filter((c) => c.status !== 'active' || isExpired(c));
 
   return (
     <div className="space-y-6">
@@ -334,7 +337,9 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
                   className="bg-[#FAF6EA]/70 dark:bg-[#14372C]/60 border border-[#C9A24B]/30 rounded-xl p-2.5 text-xs text-[#3D5A4C] dark:text-slate-400 flex items-center justify-between shadow-sm"
                 >
                   <span className="line-through">{rc.sharedWithLabel}</span>
-                  <span className="text-[10px] font-mono font-bold text-[#991B1B] dark:text-rose-400/80">Revoked</span>
+                  <span className="text-[10px] font-mono font-bold text-[#991B1B] dark:text-rose-400/80">
+                    {rc.status === 'revoked' ? 'Revoked' : 'Expired'}
+                  </span>
                 </div>
               ))}
             </div>

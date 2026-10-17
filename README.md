@@ -260,4 +260,44 @@ Full-duplex WebSocket connection for real-time audio streaming and speech events
 
 ## 📜 License & Compliance
 
+
 MediScript is released for clinical workflow innovation and healthcare continuity research. All patient health records are modeled according to **HL7 FHIR R4** standards and Indian **ABDM (Ayushman Bharat Digital Mission)** consent frameworks.
+
+---
+
+## 🎬 3.5-Minute Remotion Product Launch Video
+
+> **Evaluation Dossier & Scoring Rubrics**: See [**DEMO_VIDEO_GUIDE.md**](DEMO_VIDEO_GUIDE.md) for the complete act-by-act evaluator breakdown.
+
+A programmatic product video created with **Remotion 4** (1080p Full HD @ 30 FPS, 6 acts) showcasing the complete outpatient journey, sovereign vaults, spatial OCR, voice companion, and cryptographic consent.
+
+```
+0:00 ─── 0:35 ─── 1:05 ─── 1:35 ────── 2:32 ────── 3:08 ─── 3:30
+  │        │        │        │           │           │        │
+ Act 1   Act 2    Act 3    Act 4       Act 5       Act 6   Outro
+ Crisis  Vaults    OCR     Voice       Consent     Stack
+ (OPD)  (Theme)  (RxNorm) (Tri-ling)  (DPDP Sec12) (Arch)
+```
+
+### ⏱️ Act-by-Act Timeline
+
+| Act | Timestamp | Title |
+| :---: | :---: | :--- |
+| **Act 1** | **0:00 – 0:35** | The OPD Clinical Discontinuity Crisis |
+| **Act 2** | **0:35 – 1:05** | Herbarium Sanctuary & Multi-Vaults |
+| **Act 3** | **1:05 – 1:35** | Spatial Prescription OCR (RxNorm Insight) |
+| **Act 4** | **1:35 – 2:32** | Trilingual Voice Assistant |
+| **Act 5** | **2:32 – 3:08** | Consent & DPDP Compliance |
+| **Act 6** | **3:08 – 3:30** | Stack Architecture & Outro |
+
+### 💻 Quickstart for Judges: Preview & Render the Video
+
+```bash
+# From the repo root:
+cd demo-video
+npm install
+npm run studio    # Live Remotion Studio for interactive frame-scrubbing
+npm run render    # Export the final 1080p MP4 to demo-video/out/
+```
+
+The source lives in `demo-video/src/` (6 act scenes + Root.tsx). See [DEMO_VIDEO_GUIDE.md](DEMO_VIDEO_GUIDE.md) for the full judge walkthrough.

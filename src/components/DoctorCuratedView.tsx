@@ -41,7 +41,13 @@ export const DoctorCuratedView: React.FC<DoctorCuratedViewProps> = ({
   encounters,
   onExit,
 }) => {
-  const [secondsRemaining, setSecondsRemaining] = useState<number>(15 * 60);
+  const getInitialSeconds = () => {
+    if (!consent.expiresAt) return 15 * 60;
+    const diff = Math.floor((new Date(consent.expiresAt).getTime() - Date.now()) / 1000);
+    return Math.max(0, diff);
+  };
+
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(getInitialSeconds);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -55,6 +61,61 @@ export const DoctorCuratedView: React.FC<DoctorCuratedViewProps> = ({
     const s = sec % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
+
+  const isExpired =
+    consent.status === 'expired' ||
+    consent.status === 'revoked' ||
+    (Boolean(consent.expiresAt) && new Date(consent.expiresAt).getTime() <= Date.now()) ||
+    secondsRemaining <= 0;
+
+  if (isExpired) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-6 font-sans">
+        <div className="max-w-md w-full bg-slate-900 border border-rose-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-5 shadow-2xl shadow-rose-950/20">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mx-auto">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-xl font-bold text-white tracking-tight">Access Expired / Session Terminated</h1>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              The ephemeral authorization window for token <span className="font-mono text-teal-400">{consent.shareToken}</span> has closed. Under DPDP Act 2023 regulations and zero-trust privacy policy, temporary physician access sessions are immediately invalidated once expired.
+            </p>
+          </div>
+
+          <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 text-left space-y-1.5 text-xs font-mono text-slate-400">
+            <div className="flex justify-between">
+              <span>Token:</span>
+              <span className="text-teal-400 font-bold">{consent.shareToken}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Authorized Recipient:</span>
+              <span className="text-slate-200">{consent.sharedWithLabel}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Purpose:</span>
+              <span className="text-slate-200">{consent.purpose}</span>
+            </div>
+            {consent.expiresAt && (
+              <div className="flex justify-between">
+                <span>Expiration:</span>
+                <span className="text-rose-400">{new Date(consent.expiresAt).toLocaleTimeString()}</span>
+              </div>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={onExit}
+            className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-750 text-teal-300 rounded-xl border border-slate-700 text-xs font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Return to Studio</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Filter only records allowed in this specific consent token
   const allowedMeds = medications.filter((m) => consent.allowedRecordIds.includes(m.id));
