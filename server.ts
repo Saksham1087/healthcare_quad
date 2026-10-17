@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
 
 // High limit for high-resolution medical document scans
 app.use(express.json({ limit: '35mb' }));
@@ -792,6 +792,7 @@ ${patientSummary}`;
 });
 
 import http from 'http';
+import net from 'net';
 import { WebSocketServer } from 'ws';
 
 const server = http.createServer(app);
@@ -833,7 +834,127 @@ if (process.env.NODE_ENV === 'production') {
   app.use(vite.middlewares);
 }
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`MediScript Server & WebSocket listening on http://0.0.0.0:${PORT}`);
-});
+/**
+ * Parse CLI port flags and strict port configuration.
+ * Supported CLI flags:
+ *   --port <num>, -p <num>
+ *   --port=<num>, -p=<num>
+ *   --strict-port
+ */
+function parsePortOptions(): { port?: number; strictPort: boolean } {
+  const args = process.argv.slice(2);
+  let port: number | undefined;
+  let strictPort = process.env.STRICT_PORT === 'true';
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--strict-port') {
+      strictPort = true;
+    } else if (arg === '--port' || arg === '-p') {
+      const nextArg = args[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        const parsed = parseInt(nextArg, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+          port = parsed;
+        }
+      }
+    } else if (arg.startsWith('--port=')) {
+      const parsed = parseInt(arg.split('=')[1], 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+        port = parsed;
+      }
+    } else if (arg.startsWith('-p=')) {
+      const parsed = parseInt(arg.split('=')[1], 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+        port = parsed;
+      }
+    }
+  }
+
+  return { port, strictPort };
+}
+
+/**
+ * Check if a port is currently available on the host interface.
+ */
+function isPortAvailable(port: number, host = '0.0.0.0'): Promise<boolean> {
+  return new Promise((resolve) => {
+    const tester = net.createServer()
+      .once('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          resolve(false);
+        } else {
+          resolve(false);
+        }
+      })
+      .once('listening', () => {
+        tester.close(() => resolve(true));
+      })
+      .listen(port, host);
+  });
+}
+
+/**
+ * Finds an available port starting from startPort.
+ * If startPort is 0, OS allocates a dynamic port.
+ */
+async function findAvailablePort(startPort: number, host = '0.0.0.0', maxAttempts = 50): Promise<number> {
+  if (startPort === 0) return 0;
+  let port = startPort;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const available = await isPortAvailable(port, host);
+    if (available) {
+      return port;
+    }
+    console.warn(`[Port Manager] Port ${port} is in use, checking port ${port + 1}...`);
+    port++;
+  }
+  throw new Error(`[Port Manager] Could not find an available port after ${maxAttempts} attempts starting from ${startPort}`);
+}
+
+async function startServer() {
+  const { port: cliPort, strictPort } = parsePortOptions();
+  const envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : undefined;
+  const targetPort = cliPort !== undefined
+    ? cliPort
+    : (envPort !== undefined && !isNaN(envPort) ? envPort : 3000);
+
+  let chosenPort = targetPort;
+
+  if (strictPort) {
+    const available = await isPortAvailable(targetPort, '0.0.0.0');
+    if (!available) {
+      console.error(`[Port Manager] Error: Requested port ${targetPort} is already in use and --strict-port is enabled.`);
+      process.exit(1);
+    }
+  } else {
+    chosenPort = await findAvailablePort(targetPort, '0.0.0.0');
+  }
+
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Port Manager] Port ${chosenPort} is already in use.`);
+    } else {
+      console.error('[Server Error]', err);
+    }
+  });
+
+  server.listen(chosenPort, '0.0.0.0', () => {
+    const address = server.address();
+    const actualPort = typeof address === 'object' && address ? address.port : chosenPort;
+    process.env.PORT = String(actualPort);
+
+    console.log(`\n======================================================`);
+    console.log(` MediScript Clinical Engine running on port ${actualPort}`);
+    if (actualPort !== targetPort) {
+      console.log(` (Note: Requested port ${targetPort} was busy; bound to next free port)`);
+    }
+    console.log(` Local:   http://localhost:${actualPort}`);
+    console.log(` Network: http://0.0.0.0:${actualPort}`);
+    console.log(` WS:      ws://localhost:${actualPort}/ws/live-audio`);
+    console.log(`======================================================\n`);
+  });
+}
+
+await startServer();
 
