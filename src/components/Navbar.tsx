@@ -1,5 +1,5 @@
-import React from 'react';
-import { ShieldCheck, Plus, AlertCircle, Share2, Sun, Moon, Mic } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, Plus, AlertCircle, Share2, Sun, Moon, Mic, Menu, X } from 'lucide-react';
 import { BulbSeedIcon } from './BulbasaurThemeAssets';
 import { PatientProfileSwitcher } from './PatientProfileSwitcher';
 import { PatientProfile, PatientRecordStore } from '../types/fhir';
@@ -45,8 +45,19 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectPatient,
   onCreatePatient,
 }) => {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const mobileTabs: { id: ActiveTabType; label: string; icon?: React.ReactNode; badge?: number | null }[] = [
+    { id: 'timeline', label: 'Health Timeline' },
+    { id: 'scanner', label: 'Prescription & Lab OCR' },
+    { id: 'safety', label: 'Safety & Conflicts', badge: alertCount > 0 ? alertCount : null },
+    { id: 'consent', label: 'Consent & Share', badge: activeConsentCount > 0 ? activeConsentCount : null },
+    { id: 'emergency', label: 'Emergency Card' },
+    { id: 'audit', label: 'Audit & DPDP', icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+  ];
+
   return (
-    <header className="flex items-center justify-between gap-4 md:gap-8 px-4 md:px-8 py-3 bg-[#FAF6EA]/95 dark:bg-[#0E2A21]/95 backdrop-blur-md border-b border-[#C9A24B]/35 text-[#1B2A22] dark:text-[#F3EBD3] sticky top-0 z-40 transition-colors shadow-sm">
+    <header className="relative flex items-center justify-between gap-4 md:gap-8 px-4 md:px-8 py-3 bg-[#FAF6EA]/95 dark:bg-[#0E2A21]/95 backdrop-blur-md border-b border-[#C9A24B]/35 text-[#1B2A22] dark:text-[#F3EBD3] sticky top-0 z-40 transition-colors shadow-sm">
       {/* Zone 1: Wordmark with Bulb Seed emblem + LIVE Badge */}
       <div className="flex items-center gap-3 shrink-0">
         <div className="w-9 h-9 rounded-xl bg-[#3FA796]/15 border border-[#C9A24B]/40 flex items-center justify-center text-[#3FA796] shadow-sm">
@@ -164,8 +175,56 @@ export const Navbar: React.FC<NavbarProps> = ({
         </button>
       </nav>
 
+      {/* Mobile navigation dropdown: the only tab links visible below lg */}
+      {mobileNavOpen && (
+        <nav
+          id="mobile-nav-panel"
+          className="lg:hidden absolute top-full left-0 right-0 z-40 grid gap-1 border-b border-[#C9A24B]/35 bg-[#FAF6EA] dark:bg-[#0E2A21] px-4 py-3 shadow-lg"
+        >
+          {mobileTabs.map(({ id, label, icon, badge }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setActiveTab(id);
+                setMobileNavOpen(false);
+              }}
+              aria-current={activeTab === id ? 'page' : undefined}
+              className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                activeTab === id
+                  ? 'bg-[#2D6A4F]/10 text-[#2D6A4F] dark:bg-[#52B788]/15 dark:text-[#52B788] font-bold'
+                  : 'text-[#1E4D3B] dark:text-[#A3C5B8] hover:bg-[#2D6A4F]/5'
+              }`}
+            >
+              <span className="flex items-center gap-2 whitespace-nowrap">
+                {icon}
+                {label}
+              </span>
+              {badge !== null && badge !== undefined && (
+                <span className="inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-[#E4572E] text-white tabular-nums shadow-sm">
+                  {badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      )}
+
       {/* Zone 3: Patient Profile Switcher + Voice + Actions + Theme Toggle */}
       <div className="flex items-center gap-2.5 shrink-0">
+        {/* Mobile navigation toggle (hidden on lg+ where inline links render) */}
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen((open) => !open)}
+          aria-expanded={mobileNavOpen}
+          aria-controls="mobile-nav-panel"
+          className="lg:hidden p-2 rounded-xl bg-[#3FA796]/15 hover:bg-[#3FA796]/25 border border-[#3FA796]/30 text-[#0F3D2E] dark:text-[#B8E986] transition-colors"
+          aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          title="Open navigation menu"
+        >
+          {mobileNavOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+        </button>
+
         {/* Active Patient Profile Switcher */}
         <PatientProfileSwitcher
           currentPatientId={currentPatientId}
