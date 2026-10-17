@@ -22,12 +22,36 @@ The system SHALL capture speech through a push-to-talk control in the SaurAssist
 
 ### Requirement: browser speech recognition as primary path
 
-The system SHALL use the browser's SpeechRecognition engine for transcription with interim results when the browser provides it (Chrome/Edge).
+The system SHALL use the browser's SpeechRecognition engine for transcription with interim results only when the user has explicitly selected a language (`en` / `hi` / `mr`) and the browser provides the engine (Chrome/Edge). When the language selector is Auto, the system SHALL NOT use the browser SpeechRecognition engine (it cannot auto-detect a mid-session language) and SHALL instead record directly from the microphone to the server for Gemini transcription with language auto-detection, making the parallel mic recorder the primary input for Auto mode.
 
 #### Scenario: recognized speech
 
 - **WHEN** the browser recognizer returns a final transcript
 - **THEN** the parallel recording is discarded and the finalized text enters the chat pipeline exactly as spoken
+
+#### Scenario: auto mode goes cloud-first
+
+- **WHEN** the language selector is Auto and the user speaks
+- **THEN** the browser SpeechRecognition engine is skipped, the parallel recording is sent to the server for Gemini transcription with language auto-detection, and the returned transcript enters the chat pipeline
+
+#### Scenario: explicit language still prefers browser engine when available
+
+- **WHEN** the user has explicitly selected `en`, `hi`, or `mr` and the browser provides the SpeechRecognition engine
+- **THEN** the browser engine drives transcription with interim results, and the parallel recording is used only if the engine fails with a connectivity-class error
+
+### Requirement: bounded recording session
+
+The system SHALL cap a recording session at 4 minutes; when the cap is reached, the system SHALL automatically finalize the recording and attempt server-side Gemini transcription with it. The system SHALL also handle manual stop so that the session ends with a recognized phrase, a successfully server-transcribed phrase, or — only when both recognition and server transcription fail — a graceful stop with an actionable error.
+
+#### Scenario: recording cap reached
+
+- **WHEN** the 4-minute recording cap is reached while listening
+- **THEN** the recording is finalized automatically and the captured audio is sent for server-side Gemini transcription instead of being discarded
+
+#### Scenario: manual stop outcome
+
+- **WHEN** the user manually stops a recording session
+- **THEN** the session ends either with a recognized phrase (browser or server transcription) or as a graceful stop, and an error is shown only if both recognition and server transcription have failed
 
 ### Requirement: server-side Gemini transcription fallback
 

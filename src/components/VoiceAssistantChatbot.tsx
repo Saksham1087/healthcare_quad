@@ -68,6 +68,14 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const pendingAudioChunksRef = useRef<Blob[]>([]);
+  const finalResultRef = useRef(false);
+  const recordingCapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusRef = useRef<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+
+  // Keep statusRef in sync so async closures tear down against live status
+  useEffect(() => {
+    statusRef.current = status;
+  });
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -76,10 +84,41 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     }
   }, [messages, interimTranscript, status]);
 
+  // Escape key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        stopAllAudio();
+        void finalizeRecording();
+        stopListening();
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopAllAudio();
+      if (recordingCapRef.current) {
+        clearTimeout(recordingCapRef.current);
+        recordingCapRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      if (mediaRecorderRef.current) {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+        mediaRecorderRef.current = null;
+        pendingAudioChunksRef.current = [];
+      }
       if (microphoneStreamRef.current) {
         microphoneStreamRef.current.getTracks().forEach((track) => track.stop());
       }
@@ -102,7 +141,7 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-    if (status === 'speaking') {
+    if (statusRef.current === 'speaking') {
       setStatus('idle');
     }
   };
@@ -204,22 +243,49 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       };
     });
 
+  // Manual stop (tap/cap): finalize the recording FIRST, then tear the
+  // session down. If no browser final transcript arrived, transcribe the
+  // recording via Gemini; a null blob (recorder never started) stops silently.
+  const handleStopTap = async () => {
+    const finalArrived = finalResultRef.current;
+    const blob = await finalizeRecording();
+    stopListening();
+    if (finalArrived) return;
+    if (!blob) return;
+    setStatus('thinking');
+    try {
+      const text = (await transcribeWithGemini(blob)).trim();
+      if (text) {
+        handleUserQuery(text);
+        return;
+      }
+    } catch (e) {
+      console.warn('Manual stop transcription notice:', e);
+    }
+    setStatus('idle');
+    setErrorMessage('Voice input stopped without a recognized phrase. Please try again in Google Chrome or re-record.');
+  };
+
   // Start Mic Listening with Audio Waveform Visualizer
   const startListening = async () => {
     stopAllAudio();
+    if (statusRef.current === 'listening') return;
+    finalResultRef.current = false;
     setErrorMessage(null);
 
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
+    if (!SpeechRecognition && selectedLang !== 'auto') {
       setErrorMessage('Speech recognition is not supported in this browser. Please use Google Chrome or Edge.');
       return;
     }
 
     try {
       // Connect Microphone for AnalyserNode Visualizer
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       microphoneStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -244,7 +310,15 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
         };
         recorder.start();
         mediaRecorderRef.current = recorder;
+        recordingCapRef.current = setTimeout(async () => {
+          if (statusRef.current !== 'listening') return;
+          await handleStopTap();
+        }, 4 * 60 * 1000);
       }
+
+      // Enter the listening state immediately — recognition.onstart also sets
+      // it where browser STT is active; 'auto' mode relies on this line alone.
+      setStatus('listening');
 
       // Loop to update audio waveform level
       const updateWaveform = () => {
@@ -257,76 +331,82 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       };
       updateWaveform();
 
-      // Configure Speech Recognition
-      const recognition = new SpeechRecognition();
-      recognition.lang = getRecognitionLang(selectedLang);
-      recognition.interimResults = true;
-      recognition.continuous = false;
-      recognitionRef.current = recognition;
+      // Configure Speech Recognition — skipped entirely in 'auto' mode:
+      // browser cloud STT is not used, only the parallel recording is kept and
+      // finalized via the manual stop tap (handleStopTap) or the 4-minute cap.
+      if (selectedLang !== 'auto') {
+        const recognition = new SpeechRecognition();
+        recognition.lang = getRecognitionLang(selectedLang);
+        recognition.interimResults = true;
+        recognition.continuous = false;
+        recognitionRef.current = recognition;
 
-      recognition.onstart = () => {
-        setStatus('listening');
-        setInterimTranscript('');
-      };
+        recognition.onstart = () => {
+          setStatus('listening');
+          setInterimTranscript('');
+        };
 
-      recognition.onresult = (event: any) => {
-        let final = '';
-        let interim = '';
+        recognition.onresult = (event: any) => {
+          let final = '';
+          let interim = '';
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            final += event.results[i][0].transcript;
-          } else {
-            interim += event.results[i][0].transcript;
-          }
-        }
-
-        setInterimTranscript(interim);
-
-        if (final.trim()) {
-          void finalizeRecording();
-          stopListening();
-          handleUserQuery(final.trim());
-        }
-      };
-
-      recognition.onerror = async (event: any) => {
-        console.warn('Speech recognition notice:', event.error);
-        // Finalize the parallel recording before stopListening tears it down
-        const recordedBlob = await finalizeRecording();
-        stopListening();
-        if (event.error === 'not-allowed') {
-          setErrorMessage('Microphone access was denied. Please allow microphone permissions in your browser settings.');
-        } else if (event.error === 'network' || event.error === 'service-not-allowed') {
-          // Brave / BrowserOS / Chromium builds lack the browser cloud speech
-          // engine — fall back to Gemini transcription of the recorded audio
-          try {
-            if (recordedBlob) {
-              setStatus('thinking');
-              const text = (await transcribeWithGemini(recordedBlob)).trim();
-              if (text) {
-                handleUserQuery(text);
-                return;
-              }
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              final += event.results[i][0].transcript;
+            } else {
+              interim += event.results[i][0].transcript;
             }
-          } catch (fallbackErr) {
-            console.warn('Gemini transcription fallback notice:', fallbackErr);
           }
-          setErrorMessage(
-            'Voice input is unavailable in this browser: its cloud speech engine was unreachable (common in Brave, BrowserOS, and some Chromium builds), and Gemini transcription did not return a result. Type your question below, or open MediScript in Google Chrome for voice input.'
-          );
-        } else if (event.error !== 'no-speech') {
-          setErrorMessage(`Audio input notice: ${event.error}`);
-        }
-      };
 
-      recognition.onend = () => {
-        if (status === 'listening') {
+          setInterimTranscript(interim);
+
+          if (final.trim()) {
+            finalResultRef.current = true;
+            void finalizeRecording();
+            stopListening();
+            handleUserQuery(final.trim());
+          }
+        };
+
+        recognition.onerror = async (event: any) => {
+          console.warn('Speech recognition notice:', event.error);
+          // Finalize the parallel recording before stopListening tears it down
+          const recordedBlob = await finalizeRecording();
           stopListening();
-        }
-      };
+          if (event.error === 'not-allowed') {
+            setErrorMessage('Microphone access was denied. Please allow microphone permissions in your browser settings.');
+          } else if (event.error === 'network' || event.error === 'service-not-allowed') {
+            // Brave / BrowserOS / Chromium builds lack the browser cloud speech
+            // engine — fall back to Gemini transcription of the recorded audio
+            try {
+              if (recordedBlob) {
+                setStatus('thinking');
+                const text = (await transcribeWithGemini(recordedBlob)).trim();
+                if (text) {
+                  handleUserQuery(text);
+                  return;
+                }
+              }
+            } catch (fallbackErr) {
+              console.warn('Gemini transcription fallback notice:', fallbackErr);
+            }
+            setStatus('idle');
+            setErrorMessage(
+              'Voice input is unavailable in this browser: its cloud speech engine was unreachable (common in Brave, BrowserOS, and some Chromium builds), and Gemini transcription did not return a result. Type your question below, or open MediScript in Google Chrome for voice input.'
+            );
+          } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            setErrorMessage(`Audio input notice: ${event.error}`);
+          }
+        };
 
-      recognition.start();
+        recognition.onend = () => {
+          if (statusRef.current === 'listening') {
+            stopListening();
+          }
+        };
+
+        recognition.start();
+      }
     } catch (err: any) {
       console.error('Mic access error:', err);
       stopListening();
@@ -336,6 +416,10 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
 
   // Stop Listening and Release Stream
   const stopListening = () => {
+    if (recordingCapRef.current) {
+      clearTimeout(recordingCapRef.current);
+      recordingCapRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -357,9 +441,10 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     }
     setAudioLevel(0);
     setInterimTranscript('');
-    if (status === 'listening') {
+    if (statusRef.current === 'listening') {
       setStatus('idle');
     }
+    finalResultRef.current = false;
   };
 
   // Send Query to Backend & Speak Back Response

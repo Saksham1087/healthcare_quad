@@ -806,6 +806,7 @@ wss.on('connection', (ws) => {
 
   // Per-connection recording context (one recording per push-to-talk session)
   const pendingMeta: { mimeType?: string; lang?: string } = {};
+  let started = false;
 
   ws.on('message', async (data, isBinary) => {
     try {
@@ -820,9 +821,10 @@ wss.on('connection', (ws) => {
         const audioBuffer = data as Buffer;
         if (!audioBuffer.length) return;
 
+        const langName = pendingMeta.lang === 'en' ? 'English' : pendingMeta.lang === 'hi' ? 'Hindi' : pendingMeta.lang === 'mr' ? 'Marathi' : undefined;
         const languageHint =
-          pendingMeta.lang && pendingMeta.lang !== 'auto'
-            ? ` The speaker is speaking ${pendingMeta.lang}.`
+          langName
+            ? ` The speaker is speaking ${langName}.`
             : ' Auto-detect whether the speaker is speaking English, Hindi, or Marathi.';
         const instructions =
           `Transcribe the spoken words in this audio exactly as spoken, in the original language and script. ` +
@@ -850,11 +852,17 @@ wss.on('connection', (ws) => {
       if (payload.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
       } else if (payload.type === 'transcribe-start') {
+        started = true;
         pendingMeta.mimeType = payload.mimeType;
         pendingMeta.lang = payload.lang;
       }
     } catch (e) {
-      // Ignore malformed frames
+      // Ignore malformed frames; mid-transcription failures get an explicit error frame
+      if (started) {
+        try {
+          ws.send(JSON.stringify({ type: 'transcription_error', error: 'Server transcription failed' }));
+        } catch {}
+      }
     }
   });
 
