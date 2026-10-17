@@ -70,20 +70,31 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTabType>('timeline');
 
-  // Theme Management (Light / Dark mode persisted in localStorage)
+  // Theme Management (Dark mode default, persisted in localStorage)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('mediscript-theme');
-    if (saved) return saved === 'dark';
-    return false; // Default to fresh Bulbasaur warm cream light theme
+    try {
+      const mode = localStorage.getItem('mediscript-theme-mode');
+      if (mode === 'light') return false;
+      if (mode === 'dark') return true;
+      return true; // Default to Deep Forest Night dark theme
+    } catch {
+      return true;
+    }
   });
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('mediscript-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('mediscript-theme', 'light');
+    try {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('mediscript-theme', 'dark');
+        localStorage.setItem('mediscript-theme-mode', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('mediscript-theme', 'light');
+        localStorage.setItem('mediscript-theme-mode', 'light');
+      }
+    } catch (e) {
+      console.error(e);
     }
   }, [isDarkMode]);
 
@@ -261,6 +272,7 @@ export default function App() {
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [isSimulatedScan, setIsSimulatedScan] = useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -290,6 +302,7 @@ export default function App() {
     setCurrentImageUrl(url);
     setScanData(sample.presetData);
     setSelectedLineId(null);
+    setIsSimulatedScan(false);
     setSessionId(`RX-OCR-${Date.now().toString(36).toUpperCase()}`);
 
     // Auto-match patient from sample
@@ -313,6 +326,7 @@ export default function App() {
     setIsProcessing(true);
     setCurrentImageUrl(base64);
     setSelectedLineId(null);
+    setIsSimulatedScan(false);
     setNotification('Transcribing handwritten prescription with Gemini Vision OCR...');
 
     try {
@@ -333,6 +347,7 @@ export default function App() {
 
       const result = await response.json();
       if (result.success && result.data) {
+        setIsSimulatedScan(Boolean(result.simulated));
         setScanData(result.data);
         if (result.modelDetails) {
           setModelDetails(result.modelDetails);
@@ -841,7 +856,7 @@ export default function App() {
 
         {/* Themed Sprout Loader when processing */}
         {isProcessing && (
-          <ThemedSproutLoader label="Cultivating prescription transcription with Gemini Multimodal Vision..." />
+          <ThemedSproutLoader label="Transcribing handwritten prescription with Gemini Vision OCR..." />
         )}
 
         {/* Natural Vine Curved Divider */}

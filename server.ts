@@ -287,6 +287,7 @@ function getSimulatedClinicalResponse(startTime: number, model: string, imageMet
   const latency = Date.now() - startTime + 820;
   return {
     success: true,
+    simulated: true,
     data: {
       overallConfidence: 94.8,
       confidenceBreakdown: {
