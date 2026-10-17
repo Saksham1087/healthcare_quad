@@ -124,97 +124,97 @@ export const WhatsAppIngestionSimulator: React.FC<WhatsAppIngestionSimulatorProp
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       {/* Left Column: Educational Context & Ingest Trigger (4 cols) */}
       <div className="lg:col-span-4 space-y-4">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold text-teal-400 uppercase tracking-wider">
+        <div className="bg-[#FAF6EA] dark:bg-[#14372C] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl p-5 space-y-3 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-bold text-[#17483A] dark:text-teal-400 uppercase tracking-wider">
             <MessageSquare className="w-4 h-4" />
             <span>WhatsApp-First Ingestion</span>
           </div>
 
-          <h3 className="text-sm font-bold text-white tracking-tight">The Frictionless Patient Intake Flow</h3>
-          <p className="text-xs text-slate-300 leading-relaxed">
+          <h3 className="text-sm font-bold text-[#1B2A22] dark:text-white tracking-tight">The Frictionless Patient Intake Flow</h3>
+          <p className="text-xs text-[#3D5A4C] dark:text-[#A3C5B8] leading-relaxed">
             In India, over 70% of digital medical exchanges occur over WhatsApp. Patients take a photo of doctor handwriting or forward lab PDFs without opening a portal.
           </p>
 
-          <div className="pt-3 border-t border-slate-800 space-y-2 text-xs text-slate-400">
+          <div className="pt-3 border-t border-[#C9A24B]/20 dark:border-slate-800 space-y-2 text-xs text-[#3D5A4C] dark:text-slate-400">
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#1E4D3B] dark:text-teal-400 shrink-0 mt-0.5" />
               <span>Detects image compression loss and advises sending as uncompressed document</span>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#1E4D3B] dark:text-teal-400 shrink-0 mt-0.5" />
               <span>Multimodal Vision AI returns itemized pills and confidence scores in 2 seconds</span>
             </div>
             <div className="flex items-start gap-2">
-              <CheckCircle2 className="w-3.5 h-3.5 text-teal-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 text-[#1E4D3B] dark:text-teal-400 shrink-0 mt-0.5" />
               <span>Machine extracts, patient confirms before committing to permanent health timeline</span>
             </div>
           </div>
         </div>
 
         {/* Quick Test Presets */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-2.5">
-          <h4 className="text-xs font-semibold text-slate-400">Simulate Incoming WhatsApp Documents</h4>
+        <div className="bg-[#FAF6EA] dark:bg-[#14372C] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl p-4 space-y-2.5 shadow-sm">
+          <h4 className="text-xs font-bold text-[#1B2A22] dark:text-[#F3EBD3]">Simulate Incoming WhatsApp Documents</h4>
           <div className="space-y-1.5">
             <button
               type="button"
               onClick={() => handleSendSimulatedScript('cardio')}
-              className="w-full text-left px-3 py-2 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg text-xs transition-colors flex items-center justify-between"
+              className="w-full text-left px-3 py-2 bg-white dark:bg-slate-950 hover:bg-[#F3EBD3] dark:hover:bg-slate-850 border border-[#C9A24B]/30 dark:border-slate-800 rounded-lg text-xs transition-colors flex items-center justify-between shadow-sm"
             >
               <div>
-                <p className="font-semibold text-slate-200">Apollo Cardiology Script</p>
-                <p className="text-[11px] text-slate-500">Telma-H + Rosuvas 10</p>
+                <p className="font-bold text-[#1B2A22] dark:text-slate-200">Apollo Cardiology Script</p>
+                <p className="text-[11px] text-[#3D5A4C] dark:text-slate-400 font-medium">Telma-H + Rosuvas 10</p>
               </div>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#3D5A4C] dark:text-slate-500" />
             </button>
 
             <button
               type="button"
               onClick={() => handleSendSimulatedScript('respiratory')}
-              className="w-full text-left px-3 py-2 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg text-xs transition-colors flex items-center justify-between"
+              className="w-full text-left px-3 py-2 bg-white dark:bg-slate-950 hover:bg-[#F3EBD3] dark:hover:bg-slate-850 border border-[#C9A24B]/30 dark:border-slate-800 rounded-lg text-xs transition-colors flex items-center justify-between shadow-sm"
             >
               <div>
-                <p className="font-semibold text-slate-200">Acute Respiratory Prescription</p>
-                <p className="text-[11px] text-slate-500">Azithromycin + Benzonatate</p>
+                <p className="font-bold text-[#1B2A22] dark:text-slate-200">Acute Respiratory Prescription</p>
+                <p className="text-[11px] text-[#3D5A4C] dark:text-slate-400 font-medium">Azithromycin + Benzonatate</p>
               </div>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#3D5A4C] dark:text-slate-500" />
             </button>
 
             <button
               type="button"
               onClick={() => handleSendSimulatedScript('pediatric')}
-              className="w-full text-left px-3 py-2 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded-lg text-xs transition-colors flex items-center justify-between"
+              className="w-full text-left px-3 py-2 bg-white dark:bg-slate-950 hover:bg-[#F3EBD3] dark:hover:bg-slate-850 border border-[#C9A24B]/30 dark:border-slate-800 rounded-lg text-xs transition-colors flex items-center justify-between shadow-sm"
             >
               <div>
-                <p className="font-semibold text-slate-200">Pediatric Suspension Script</p>
-                <p className="text-[11px] text-slate-500">Augmentin 400mg/5mL oral susp</p>
+                <p className="font-bold text-[#1B2A22] dark:text-slate-200">Pediatric Suspension Script</p>
+                <p className="text-[11px] text-[#3D5A4C] dark:text-slate-400 font-medium">Augmentin 400mg/5mL oral susp</p>
               </div>
-              <ArrowRight className="w-3.5 h-3.5 text-slate-500" />
+              <ArrowRight className="w-3.5 h-3.5 text-[#3D5A4C] dark:text-slate-500" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Right Column: WhatsApp Interactive Phone Chat Canvas (8 cols) */}
-      <div className="lg:col-span-8 bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-xl">
+      <div className="lg:col-span-8 bg-white dark:bg-slate-900 border border-[#C9A24B]/35 dark:border-slate-800 rounded-2xl overflow-hidden flex flex-col shadow-xl">
         {/* WhatsApp Chat Header */}
-        <div className="bg-emerald-950/80 border-b border-emerald-900/60 px-5 py-3.5 flex items-center justify-between">
+        <div className="bg-[#17483A] dark:bg-emerald-950/80 border-b border-[#2D6A4F]/40 dark:border-emerald-900/60 px-5 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center font-bold text-emerald-300 text-sm">
+            <div className="w-9 h-9 rounded-full bg-white/20 border border-white/30 flex items-center justify-center font-bold text-white text-sm">
               M
             </div>
             <div>
               <div className="flex items-center gap-1.5">
                 <h4 className="text-sm font-bold text-white tracking-tight">MediScript Health Assistant</h4>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-[#7BC96F] dark:text-emerald-400" />
               </div>
-              <p className="text-[11px] text-emerald-300/80">Verified Healthcare Ingestion Service</p>
+              <p className="text-[11px] text-[#C5E99B] dark:text-emerald-300/80">Verified Healthcare Ingestion Service</p>
             </div>
           </div>
-          <span className="text-[10px] font-mono text-emerald-400/80">DPDP Act 2023 Compliant</span>
+          <span className="text-[10px] font-mono text-[#C5E99B] dark:text-emerald-400/80 font-bold">DPDP Act 2023 Compliant</span>
         </div>
 
         {/* Chat Stream Viewport */}
-        <div className="p-5 space-y-4 max-h-[520px] overflow-y-auto bg-slate-950/90 font-sans">
+        <div className="p-5 space-y-4 max-h-[520px] overflow-y-auto bg-[#F3EBD3]/35 dark:bg-slate-950/90 font-sans">
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -223,38 +223,38 @@ export const WhatsAppIngestionSimulator: React.FC<WhatsAppIngestionSimulatorProp
               <div
                 className={`max-w-[85%] rounded-2xl p-4 text-xs leading-relaxed space-y-2.5 ${
                   msg.sender === 'user'
-                    ? 'bg-emerald-900/40 border border-emerald-800/60 text-emerald-100 rounded-tr-none'
-                    : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none shadow-md'
+                    ? 'bg-[#17483A] dark:bg-emerald-900/40 border border-[#2D6A4F]/60 dark:border-emerald-800/60 text-white dark:text-emerald-100 rounded-tr-none shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border border-[#C9A24B]/30 dark:border-slate-800 text-[#1B2A22] dark:text-slate-200 rounded-tl-none shadow-md'
                 }`}
               >
                 {msg.docTitle && (
-                  <div className="flex items-center gap-2 p-2 rounded-lg bg-black/20 border border-white/10 text-xs font-mono">
-                    <FileText className="w-4 h-4 text-emerald-400" />
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-black/10 dark:bg-black/20 border border-black/10 dark:border-white/10 text-xs font-mono font-bold">
+                    <FileText className="w-4 h-4 text-[#1E4D3B] dark:text-emerald-400" />
                     <span>{msg.docTitle}</span>
                   </div>
                 )}
 
-                {msg.text && <p>{msg.text}</p>}
+                {msg.text && <p className="font-medium">{msg.text}</p>}
 
                 {msg.botPayload && (
-                  <div className="space-y-3 pt-2 border-t border-slate-800">
+                  <div className="space-y-3 pt-2 border-t border-[#C9A24B]/20 dark:border-slate-800">
                     {/* Quality inspection */}
-                    <div className="bg-slate-950/80 rounded-lg p-2.5 space-y-1 font-mono text-[11px] text-slate-400 border border-slate-800">
-                      <p className="text-teal-400 font-semibold">{msg.botPayload.qualityCheck}</p>
+                    <div className="bg-[#FAF6EA] dark:bg-slate-950/80 rounded-lg p-2.5 space-y-1 font-mono text-[11px] text-[#3D5A4C] dark:text-slate-400 border border-[#C9A24B]/30 dark:border-slate-800">
+                      <p className="text-[#17483A] dark:text-teal-400 font-bold">{msg.botPayload.qualityCheck}</p>
                       {msg.botPayload.compressionWarning && (
-                        <p className="text-amber-400/90 text-[10px]">{msg.botPayload.compressionWarning}</p>
+                        <p className="text-amber-800 dark:text-amber-400/90 text-[10px] font-bold">{msg.botPayload.compressionWarning}</p>
                       )}
                     </div>
 
                     {/* Extracted overview */}
                     <div className="space-y-1.5">
-                      <p className="text-slate-400 font-medium">
-                        Prescriber: <span className="text-white">{msg.botPayload.extractedPrescriber}</span>
+                      <p className="text-[#3D5A4C] dark:text-slate-400 font-bold">
+                        Prescriber: <span className="text-[#1B2A22] dark:text-white font-bold">{msg.botPayload.extractedPrescriber}</span>
                       </p>
-                      <p className="text-slate-400 font-medium">Extracted Medicines:</p>
-                      <ul className="list-disc list-inside space-y-0.5 text-slate-300 pl-1">
+                      <p className="text-[#3D5A4C] dark:text-slate-400 font-bold">Extracted Medicines:</p>
+                      <ul className="list-disc list-inside space-y-0.5 text-[#1B2A22] dark:text-slate-300 pl-1">
                         {msg.botPayload.extractedMeds.map((m, idx) => (
-                          <li key={idx} className="font-mono text-[11px]">
+                          <li key={idx} className="font-mono text-[11px] font-medium">
                             {m}
                           </li>
                         ))}
@@ -262,8 +262,8 @@ export const WhatsAppIngestionSimulator: React.FC<WhatsAppIngestionSimulatorProp
                     </div>
 
                     {msg.botPayload.safetyFlag && (
-                      <div className="bg-rose-950/40 border border-rose-900/60 rounded-lg p-2 text-rose-300 text-[11px] flex items-start gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                      <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 rounded-lg p-2 text-rose-900 dark:text-rose-300 text-[11px] flex items-start gap-1.5 font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
                         <span>{msg.botPayload.safetyFlag}</span>
                       </div>
                     )}
@@ -272,17 +272,17 @@ export const WhatsAppIngestionSimulator: React.FC<WhatsAppIngestionSimulatorProp
                     <button
                       type="button"
                       onClick={() => onLoadScriptToStudio(msg.botPayload!.actionSampleId)}
-                      className="w-full py-2 px-3 bg-teal-400 hover:bg-teal-300 text-slate-900 font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-sm shadow-teal-900/40"
+                      className="w-full py-2 px-3 bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] dark:hover:bg-[#4CB8A4] text-white dark:text-[#0E2A21] font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs shadow-md"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-slate-900" />
+                      <Sparkles className="w-3.5 h-3.5 text-[#B8E986] dark:text-[#0E2A21]" />
                       <span>Review in OCR Inspector (Machine Extracts, Human Confirms)</span>
                     </button>
                   </div>
                 )}
 
-                <div className="flex items-center justify-end gap-1 text-[10px] text-slate-500 font-mono">
+                <div className="flex items-center justify-end gap-1 text-[10px] text-[#3D5A4C] dark:text-slate-500 font-mono">
                   <span>{msg.timestamp}</span>
-                  {msg.sender === 'user' && <Check className="w-3 h-3 text-emerald-400" />}
+                  {msg.sender === 'user' && <Check className="w-3 h-3 text-[#1E4D3B] dark:text-emerald-400" />}
                 </div>
               </div>
             </div>
@@ -290,7 +290,7 @@ export const WhatsAppIngestionSimulator: React.FC<WhatsAppIngestionSimulatorProp
         </div>
 
         {/* Chat Input Bar */}
-        <div className="bg-slate-900 border-t border-slate-800 p-3 flex items-center gap-2">
+        <div className="bg-[#FAF6EA] dark:bg-slate-900 border-t border-[#C9A24B]/30 dark:border-slate-800 p-3 flex items-center gap-2">
           <input
             type="text"
             placeholder="Type message or paste medical script notes..."
@@ -308,7 +308,7 @@ export const WhatsAppIngestionSimulator: React.FC<WhatsAppIngestionSimulatorProp
                 setInputPrompt('');
               }
             }}
-            className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-teal-500"
+            className="flex-1 bg-white dark:bg-slate-950 border border-[#C9A24B]/35 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-[#1B2A22] dark:text-white placeholder:text-[#3D5A4C]/60 focus:outline-none focus:border-[#2D6A4F] dark:focus:border-teal-500"
           />
           <button
             type="button"
@@ -324,7 +324,7 @@ export const WhatsAppIngestionSimulator: React.FC<WhatsAppIngestionSimulatorProp
                 setInputPrompt('');
               }
             }}
-            className="p-2 rounded-lg bg-teal-400 hover:bg-teal-300 text-slate-900 transition-colors"
+            className="p-2 rounded-lg bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] text-white dark:text-[#0E2A21] transition-colors"
           >
             <Send className="w-4 h-4" />
           </button>

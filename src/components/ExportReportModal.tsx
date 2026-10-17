@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Printer,
@@ -29,6 +29,17 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
   sessionId,
 }) => {
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -83,19 +94,24 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-report-modal-title"
+        className="relative w-full max-w-3xl bg-[#FAF6EA] dark:bg-[#14372C] border-2 border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#C9A24B]/30 dark:border-slate-800 bg-[#FAF6EA] dark:bg-[#14372C]">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-              <FileText className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-[#2D6A4F]/15 border border-[#2D6A4F]/30 flex items-center justify-center text-[#1E4D3B] dark:text-[#52B788]">
+              <FileText className="w-4 h-4" aria-hidden="true" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white tracking-tight">
+              <h3 id="export-report-modal-title" className="text-base font-bold text-[#1B2A22] dark:text-white tracking-tight">
                 Clinical Prescription Dispensing Summary
               </h3>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-[#3D5A4C] dark:text-[#A3C5B8]">
                 Printable pharmaceutical record and OCR validation audit log
               </p>
             </div>
@@ -105,15 +121,17 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
             <button
               type="button"
               onClick={handleCopyText}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"
+              aria-label="Copy prescription summary to clipboard"
+              className="min-h-[44px] px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 text-[#1B2A22] dark:text-slate-300 hover:bg-[#F3EBD3] dark:hover:text-white transition-colors flex items-center gap-1.5 border border-[#C9A24B]/35 dark:border-slate-700 shadow-sm"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-[#1E4D3B] dark:text-emerald-400 font-bold" /> : <Copy className="w-3.5 h-3.5" />}
               <span>{copied ? 'Copied' : 'Copy Text'}</span>
             </button>
             <button
               type="button"
               onClick={handleDownloadJson}
-              className="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors flex items-center gap-1.5"
+              aria-label="Download prescription data as JSON"
+              className="min-h-[44px] px-3 py-1.5 text-xs font-semibold rounded-lg bg-white dark:bg-slate-800 text-[#1B2A22] dark:text-slate-300 hover:bg-[#F3EBD3] dark:hover:text-white transition-colors flex items-center gap-1.5 border border-[#C9A24B]/35 dark:border-slate-700 shadow-sm"
             >
               <Download className="w-3.5 h-3.5" />
               <span>JSON</span>
@@ -121,7 +139,8 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-cyan-400 text-slate-900 hover:bg-cyan-300 transition-colors flex items-center gap-1.5"
+              aria-label="Print clinical report"
+              className="min-h-[44px] px-3 py-1.5 text-xs font-bold rounded-lg bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] dark:hover:bg-[#4CB8A4] text-white dark:text-[#0E2A21] transition-colors flex items-center gap-1.5 shadow-sm"
             >
               <Printer className="w-3.5 h-3.5" />
               <span>Print Record</span>
@@ -129,37 +148,38 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors ml-1"
+              aria-label="Close dialog"
+              className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#3D5A4C] dark:text-slate-400 hover:text-rose-600 dark:hover:text-white rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors ml-1 font-bold"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
         </div>
 
         {/* Printable Document Body */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-950 font-sans text-slate-200 text-xs space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 bg-[#F3EBD3]/40 dark:bg-slate-950 font-sans text-[#1B2A22] dark:text-slate-200 text-xs space-y-6">
           {/* Header Record */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-            <div className="flex justify-between items-start pb-3 border-b border-slate-800">
+          <div className="p-4 rounded-xl bg-white dark:bg-[#071711] border border-[#C9A24B]/30 dark:border-slate-800 shadow-sm">
+            <div className="flex justify-between items-start pb-3 border-b border-[#C9A24B]/20 dark:border-slate-800">
               <div>
-                <h2 className="text-lg font-bold text-white tracking-tight">
+                <h2 className="text-lg font-bold text-[#1B2A22] dark:text-white tracking-tight">
                   {data.doctor.clinicOrHospital}
                 </h2>
-                <p className="text-xs text-slate-400">
-                  Prescriber: <span className="text-slate-200 font-semibold">{data.doctor.name}</span> · {data.doctor.specialty || 'General Practice'}
+                <p className="text-xs text-[#3D5A4C] dark:text-slate-400">
+                  Prescriber: <span className="text-[#1B2A22] dark:text-slate-200 font-bold">{data.doctor.name}</span> · {data.doctor.specialty || 'General Practice'}
                 </p>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-[#3D5A4C] dark:text-slate-400 mt-0.5 font-mono">
                   DEA / License: {data.doctor.licenseNumber || 'MD-ACTIVE'} · Phone: {data.doctor.phone || '(555) 019-2831'}
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-[10px] uppercase tracking-wider text-slate-400 block font-semibold">
+                <span className="text-[10px] uppercase tracking-wider text-[#3D5A4C] dark:text-slate-400 block font-bold">
                   Date of Issue
                 </span>
-                <span className="font-mono text-sm font-bold text-white">
+                <span className="font-mono text-sm font-bold text-[#1B2A22] dark:text-white">
                   {data.doctor.date}
                 </span>
-                <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-400 justify-end">
+                <div className="mt-1 flex items-center gap-1 text-[11px] text-[#1E4D3B] dark:text-emerald-400 font-bold justify-end">
                   <ShieldCheck className="w-3.5 h-3.5" />
                   <span>Signature Validated</span>
                 </div>
@@ -169,16 +189,16 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
             {/* Patient Info */}
             <div className="grid grid-cols-3 gap-3 pt-3 text-xs">
               <div>
-                <span className="text-slate-400 block text-[11px]">Patient Name:</span>
-                <span className="font-bold text-white text-sm">{data.patient.name}</span>
+                <span className="text-[#3D5A4C] dark:text-slate-400 block text-[11px] font-bold">Patient Name:</span>
+                <span className="font-bold text-[#1B2A22] dark:text-white text-sm">{data.patient.name}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">Age / Gender:</span>
-                <span className="font-medium text-white">{data.patient.age || 'Adult'} · {data.patient.gender || 'Not specified'}</span>
+                <span className="text-[#3D5A4C] dark:text-slate-400 block text-[11px] font-bold">Age / Gender:</span>
+                <span className="font-semibold text-[#1B2A22] dark:text-white">{data.patient.age || 'Adult'} · {data.patient.gender || 'Not specified'}</span>
               </div>
               <div>
-                <span className="text-slate-400 block text-[11px]">Allergies:</span>
-                <span className={`font-semibold ${data.patient.allergies?.toLowerCase().includes('pcn') || data.patient.allergies?.toLowerCase().includes('penicillin') ? 'text-rose-400' : 'text-slate-300'}`}>
+                <span className="text-[#3D5A4C] dark:text-slate-400 block text-[11px] font-bold">Allergies:</span>
+                <span className={`font-semibold ${data.patient.allergies?.toLowerCase().includes('pcn') || data.patient.allergies?.toLowerCase().includes('penicillin') ? 'text-rose-700 dark:text-rose-400 font-bold' : 'text-[#1B2A22] dark:text-slate-300'}`}>
                   {data.patient.allergies || 'No known allergies'}
                 </span>
               </div>
@@ -187,36 +207,36 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
 
           {/* Prescribed Medications Table */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+            <h4 className="text-xs font-bold text-[#1B2A22] dark:text-white uppercase tracking-wider">
               Dispensing Orders & Latin Sig Translation
             </h4>
 
-            <div className="rounded-xl border border-slate-800 overflow-hidden">
+            <div className="rounded-xl border border-[#C9A24B]/30 dark:border-slate-800 overflow-hidden shadow-sm">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-900 border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400">
+                <thead className="bg-[#EFE6CD] dark:bg-slate-900 border-b border-[#C9A24B]/30 dark:border-slate-800 text-[11px] uppercase tracking-wider text-[#1B2A22] dark:text-slate-400">
                   <tr>
-                    <th className="py-2.5 px-3 font-semibold">#</th>
-                    <th className="py-2.5 px-3 font-semibold">Medication & Strength</th>
-                    <th className="py-2.5 px-3 font-semibold">Handwritten Sig</th>
-                    <th className="py-2.5 px-3 font-semibold">Deciphered Patient Directions</th>
-                    <th className="py-2.5 px-3 font-semibold">Qty / Refills</th>
+                    <th className="py-2.5 px-3 font-bold">#</th>
+                    <th className="py-2.5 px-3 font-bold">Medication &amp; Strength</th>
+                    <th className="py-2.5 px-3 font-bold">Handwritten Sig</th>
+                    <th className="py-2.5 px-3 font-bold">Deciphered Patient Directions</th>
+                    <th className="py-2.5 px-3 font-bold">Qty / Refills</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800 bg-slate-950/60">
+                <tbody className="divide-y divide-[#C9A24B]/20 dark:divide-slate-800 bg-white dark:bg-slate-950/60">
                   {data.medications.map((med, index) => (
-                    <tr key={index} className="hover:bg-slate-900/40">
-                      <td className="py-3 px-3 font-mono text-slate-400 font-bold">{index + 1}</td>
+                    <tr key={index} className="hover:bg-[#FAF6EA] dark:hover:bg-slate-900/40">
+                      <td className="py-3 px-3 font-mono text-[#3D5A4C] dark:text-slate-400 font-bold">{index + 1}</td>
                       <td className="py-3 px-3">
-                        <div className="font-bold text-white">{med.brandName} {med.dosageStrength}</div>
-                        <div className="text-[11px] text-slate-400">{med.genericName}</div>
+                        <div className="font-bold text-[#1B2A22] dark:text-white">{med.brandName} {med.dosageStrength}</div>
+                        <div className="text-[11px] text-[#3D5A4C] dark:text-slate-400">{med.genericName}</div>
                       </td>
-                      <td className="py-3 px-3 font-mono text-amber-200/90 text-[11px] italic">
+                      <td className="py-3 px-3 font-mono text-amber-900 dark:text-amber-200/90 text-[11px] font-semibold italic">
                         {med.sigRaw || 'See directions'}
                       </td>
-                      <td className="py-3 px-3 text-slate-200 leading-relaxed font-medium">
+                      <td className="py-3 px-3 text-[#1B2A22] dark:text-slate-200 leading-relaxed font-medium">
                         {med.sigTranslated}
                       </td>
-                      <td className="py-3 px-3 font-mono text-slate-300">
+                      <td className="py-3 px-3 font-mono text-[#1B2A22] dark:text-slate-300 font-bold">
                         {med.quantity} / {med.refills}
                       </td>
                     </tr>
@@ -227,32 +247,32 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
           </div>
 
           {/* Clinical Narrative Summary */}
-          <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
-            <h4 className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-1.5">
+          <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-[#C9A24B]/30 dark:border-slate-800 shadow-sm">
+            <h4 className="text-xs font-bold text-[#1E4D3B] dark:text-cyan-400 uppercase tracking-wider mb-1.5">
               Clinical Narrative Synthesis
             </h4>
-            <p className="text-slate-300 leading-relaxed">
+            <p className="text-[#1B2A22] dark:text-slate-300 leading-relaxed">
               {data.summaryText}
             </p>
           </div>
 
           {/* Model Audit Trail & Telemetry Metadata */}
-          <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 space-y-1 font-mono">
+          <div className="p-4 rounded-xl bg-white/70 dark:bg-slate-900/60 border border-[#C9A24B]/30 dark:border-slate-800 text-[11px] text-[#3D5A4C] dark:text-slate-400 space-y-1 font-mono shadow-sm">
             <div className="flex justify-between">
               <span>OCR Pipeline Engine:</span>
-              <span className="text-slate-200 font-bold">{modelDetails.modelName} ({modelDetails.architecture})</span>
+              <span className="text-[#1B2A22] dark:text-slate-200 font-bold">{modelDetails.modelName} ({modelDetails.architecture})</span>
             </div>
             <div className="flex justify-between">
               <span>Overall Vision Transcription Confidence:</span>
-              <span className="text-emerald-400 font-bold">{data.overallConfidence.toFixed(1)}%</span>
+              <span className="text-[#1E4D3B] dark:text-emerald-400 font-bold">{data.overallConfidence.toFixed(1)}%</span>
             </div>
             <div className="flex justify-between">
               <span>Processing Latency:</span>
-              <span className="text-slate-200">{modelDetails.inferenceLatencyMs} ms</span>
+              <span className="text-[#1B2A22] dark:text-slate-200 font-bold">{modelDetails.inferenceLatencyMs} ms</span>
             </div>
             <div className="flex justify-between">
               <span>Audit Session Hash:</span>
-              <span className="text-cyan-300">{sessionId}</span>
+              <span className="text-[#1E4D3B] dark:text-cyan-300 font-bold">{sessionId}</span>
             </div>
           </div>
         </div>

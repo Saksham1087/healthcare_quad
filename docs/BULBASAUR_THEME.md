@@ -70,7 +70,7 @@ MediScript combines classical serif headlines with ultra-legible modern sans-ser
 
 ## 5. Accessibility & Motion Guidelines
 
-1. **Contrast Ratios**: All text meets WCAG AA standards (minimum 4.5:1 for body text, 3:1 for large headers). Text on dark forest backgrounds uses `#FAF6EA` or `#E5D9C5`.
+1. **Contrast Ratios**: All text meets WCAG AA standards (minimum 4.5:1 for body text, 3:1 for large headers). Text on dark forest backgrounds uses `#FAF6EA` or `#E5D9C5`. Active and interactive action links use high-contrast tokens: `#2D6A4F` (Herbal Emerald, 6.5:1) in light parchment mode and `#52B788` (Vitality Mint, 8.3:1) in dark forest mode. Critical alert links use `#991B1B` (Warning Berry, 7.2:1) in light mode and `#F87171` (Rose, 6.2:1) in dark mode.
 2. **Reduced Motion**:
    ```css
    @media (prefers-reduced-motion: reduce) {
