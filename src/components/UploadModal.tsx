@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Upload,
   Camera,
@@ -33,6 +33,21 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (cameraStream) {
+          cameraStream.getTracks().forEach((track) => track.stop());
+          setCameraStream(null);
+        }
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, cameraStream, onClose]);
 
   if (!isOpen) return null;
 
@@ -115,39 +130,48 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in font-sans">
-      <div className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[#3FA796]/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-modal-title"
+        className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[#3FA796]/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#3FA796]/20 bg-white/40 dark:bg-[#071711]/40">
           <div>
-            <h3 className="text-base font-bold text-[#0F3D2E] dark:text-[#F4FAF3] tracking-tight flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-[#3FA796]" />
+            <h3
+              id="upload-modal-title"
+              className="text-base font-bold text-[#1B2A22] dark:text-[#F4FAF3] tracking-tight flex items-center gap-2"
+            >
+              <Sparkles className="w-4 h-4 text-[#2D6A4F] dark:text-[#3FA796]" aria-hidden="true" />
               <span>Select or Upload Medical Prescription</span>
             </h3>
-            <p className="text-xs text-[#4B6E60] dark:text-[#95BDB0] mt-0.5">
+            <p className="text-xs text-[#3D5A4C] dark:text-[#A3C5B8] mt-0.5">
               Choose an authentic doctor cursive script sample or scan a prescription paper
             </p>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            className="p-1.5 text-slate-400 hover:text-rose-500 rounded-xl hover:bg-slate-200 dark:hover:bg-[#122B22] transition-colors"
+            aria-label="Close dialog"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#3D5A4C] dark:text-[#A3C5B8] hover:text-rose-600 rounded-xl hover:bg-[#F3EBD3]/60 dark:hover:bg-[#122B22] transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex items-center gap-1.5 px-6 pt-3 pb-2.5 bg-slate-100/50 dark:bg-[#071711]/60 border-b border-[#3FA796]/15">
+        <div className="flex items-center gap-1.5 px-6 pt-3 pb-2.5 bg-[#F3EBD3]/50 dark:bg-[#071711]/60 border-b border-[#3FA796]/15">
           <button
             type="button"
             onClick={() => {
               stopCamera();
               setActiveTab('samples');
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] text-xs font-semibold rounded-xl transition-all ${
               activeTab === 'samples'
-                ? 'bg-[#3FA796] text-white shadow-sm'
-                : 'text-[#4B6E60] dark:text-[#95BDB0] hover:text-[#0F3D2E] dark:hover:text-white'
+                ? 'bg-[#17483A] dark:bg-[#3FA796] text-white dark:text-[#0E2A21] shadow-sm font-bold'
+                : 'text-[#1B4332] dark:text-[#A3C5B8] hover:text-[#0F3D2E] dark:hover:text-white'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
@@ -160,10 +184,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               stopCamera();
               setActiveTab('upload');
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] text-xs font-semibold rounded-xl transition-all ${
               activeTab === 'upload'
-                ? 'bg-[#3FA796] text-white shadow-sm'
-                : 'text-[#4B6E60] dark:text-[#95BDB0] hover:text-[#0F3D2E] dark:hover:text-white'
+                ? 'bg-[#17483A] dark:bg-[#3FA796] text-white dark:text-[#0E2A21] shadow-sm font-bold'
+                : 'text-[#1B4332] dark:text-[#A3C5B8] hover:text-[#0F3D2E] dark:hover:text-white'
             }`}
           >
             <Upload className="w-3.5 h-3.5" />
@@ -176,10 +200,10 @@ export const UploadModal: React.FC<UploadModalProps> = ({
               setActiveTab('camera');
               startCamera();
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-2 min-h-[44px] text-xs font-semibold rounded-xl transition-all ${
               activeTab === 'camera'
-                ? 'bg-[#3FA796] text-white shadow-sm'
-                : 'text-[#4B6E60] dark:text-[#95BDB0] hover:text-[#0F3D2E] dark:hover:text-white'
+                ? 'bg-[#17483A] dark:bg-[#3FA796] text-white dark:text-[#0E2A21] shadow-sm font-bold'
+                : 'text-[#1B4332] dark:text-[#A3C5B8] hover:text-[#0F3D2E] dark:hover:text-white'
             }`}
           >
             <Camera className="w-3.5 h-3.5" />
@@ -191,7 +215,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'samples' && (
             <div className="space-y-3">
-              <span className="text-xs font-medium text-[#4B6E60] dark:text-[#95BDB0] block mb-2">
+              <span className="text-xs font-medium text-[#3D5A4C] dark:text-[#A3C5B8] block mb-2">
                 Click any real clinical prescription pad to load into the OCR Inspector:
               </span>
               {SAMPLE_PRESCRIPTIONS.map((sample) => (
@@ -204,23 +228,23 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                   className="p-4 rounded-2xl bg-white/70 dark:bg-[#122B22]/70 border border-[#3FA796]/20 hover:border-[#3FA796] hover:bg-white dark:hover:bg-[#17382D] transition-all cursor-pointer group flex items-start justify-between gap-4 shadow-sm"
                 >
                   <div className="flex items-start gap-3.5">
-                    <div className="w-10 h-10 rounded-xl bg-[#3FA796]/15 border border-[#3FA796]/30 flex items-center justify-center text-[#3FA796] shrink-0 mt-0.5 group-hover:scale-105 transition-transform font-bold">
+                    <div className="w-10 h-10 rounded-xl bg-[#2D6A4F]/15 border border-[#2D6A4F]/30 flex items-center justify-center text-[#1E4D3B] dark:text-[#52B788] shrink-0 mt-0.5 group-hover:scale-105 transition-transform font-bold">
                       {sample.presetData.patient.name.split(' ').map((n) => n[0]).join('')}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h4 className="text-sm font-bold text-[#0F3D2E] dark:text-[#F4FAF3] group-hover:text-[#3FA796] transition-colors">
+                        <h4 className="text-sm font-bold text-[#1B2A22] dark:text-[#F4FAF3] group-hover:text-[#2D6A4F] dark:group-hover:text-[#3FA796] transition-colors">
                           {sample.title}
                         </h4>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#3FA796]/15 text-[#3FA796] dark:text-[#B8E986] border border-[#3FA796]/25">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#2D6A4F]/15 text-[#1E4D3B] dark:text-[#B8E986] border border-[#2D6A4F]/25 font-semibold">
                           {sample.category}
                         </span>
                       </div>
-                      <p className="text-xs text-[#4B6E60] dark:text-[#95BDB0] mt-1 leading-relaxed">
+                      <p className="text-xs text-[#3D5A4C] dark:text-[#A3C5B8] mt-1 leading-relaxed">
                         {sample.subtitle}
                       </p>
-                      <div className="flex items-center gap-3 mt-2 text-[11px] text-[#4B6E60] dark:text-[#95BDB0]">
-                        <span className="font-semibold text-[#0F3D2E] dark:text-[#F4FAF3]">
+                      <div className="flex items-center gap-3 mt-2 text-[11px] text-[#3D5A4C] dark:text-[#A3C5B8]">
+                        <span className="font-semibold text-[#1B2A22] dark:text-[#F4FAF3]">
                           Patient: {sample.presetData.patient.name} ({sample.presetData.patient.age})
                         </span>
                         <span>•</span>
@@ -231,7 +255,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
                   <button
                     type="button"
-                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#3FA796] rounded-xl group-hover:bg-[#4CB8A4] transition-colors whitespace-nowrap shrink-0 mt-1 shadow-sm"
+                    className="min-h-[44px] px-3.5 py-2 text-xs font-bold text-white dark:text-[#0E2A21] bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] dark:hover:bg-[#4CB8A4] rounded-xl transition-colors whitespace-nowrap shrink-0 mt-1 shadow-sm flex items-center justify-center"
                   >
                     Load Script
                   </button>
@@ -241,12 +265,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           )}
 
           {activeTab === 'upload' && (
-            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-[#3FA796]/30 rounded-2xl bg-white/40 dark:bg-[#071711]/40 hover:bg-white/70 dark:hover:bg-[#071711]/70 transition-colors text-center">
-              <div className="w-16 h-16 rounded-2xl bg-[#3FA796]/15 border border-[#3FA796]/30 flex items-center justify-center text-[#3FA796] mb-4">
+            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-[#2D6A4F]/30 dark:border-[#3FA796]/30 rounded-2xl bg-white/40 dark:bg-[#071711]/40 hover:bg-white/70 dark:hover:bg-[#071711]/70 transition-colors text-center">
+              <div className="w-16 h-16 rounded-2xl bg-[#2D6A4F]/15 border border-[#2D6A4F]/30 flex items-center justify-center text-[#1E4D3B] dark:text-[#52B788] mb-4">
                 <Upload className="w-8 h-8" />
               </div>
-              <h4 className="text-base font-bold text-[#0F3D2E] dark:text-[#F4FAF3]">Upload Handwritten Prescription</h4>
-              <p className="text-xs text-[#4B6E60] dark:text-[#95BDB0] max-w-sm mt-1 mb-4">
+              <h4 className="text-base font-bold text-[#1B2A22] dark:text-[#F4FAF3]">Upload Handwritten Prescription</h4>
+              <p className="text-xs text-[#3D5A4C] dark:text-[#A3C5B8] max-w-sm mt-1 mb-4">
                 Drag and drop a photo or scan of a prescription pad, or select an image or PDF file from your device (PNG, JPG, WebP, PDF)
               </p>
               <input
@@ -260,7 +284,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessing}
-                className="px-5 py-2.5 text-xs font-bold text-white bg-[#3FA796] hover:bg-[#4CB8A4] rounded-xl transition-all shadow-md shadow-[#3FA796]/20"
+                className="min-h-[44px] px-5 py-2.5 text-xs font-bold text-white dark:text-[#0E2A21] bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] dark:hover:bg-[#4CB8A4] rounded-xl transition-all shadow-md shadow-[#17483A]/20 flex items-center justify-center"
               >
                 Browse File
               </button>
@@ -276,7 +300,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                   <button
                     type="button"
                     onClick={startCamera}
-                    className="mt-3 px-3 py-1.5 bg-rose-900 text-white rounded-xl font-medium hover:bg-rose-800"
+                    className="mt-3 min-h-[44px] px-4 py-2 bg-rose-900 text-white rounded-xl font-medium hover:bg-rose-800 inline-flex items-center justify-center"
                   >
                     Retry Camera
                   </button>
@@ -306,7 +330,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                     <button
                       type="button"
                       onClick={capturePhoto}
-                      className="px-6 py-2.5 bg-[#3FA796] hover:bg-[#4CB8A4] text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-[#3FA796]/25"
+                      className="min-h-[44px] px-6 py-2.5 bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] dark:hover:bg-[#4CB8A4] text-white dark:text-[#0E2A21] font-bold rounded-xl text-xs flex items-center gap-2 shadow-lg shadow-[#17483A]/25"
                     >
                       <Camera className="w-4 h-4" />
                       <span>Capture &amp; Transcribe</span>
@@ -314,7 +338,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
                     <button
                       type="button"
                       onClick={startCamera}
-                      className="px-4 py-2.5 bg-slate-200 dark:bg-[#122B22] hover:bg-slate-300 dark:hover:bg-[#17382D] text-[#0F3D2E] dark:text-[#F4FAF3] rounded-xl text-xs flex items-center gap-1.5 border border-[#3FA796]/30 font-semibold"
+                      className="min-h-[44px] px-4 py-2.5 bg-white dark:bg-[#122B22] hover:bg-[#FAF6EA] dark:hover:bg-[#17382D] text-[#1B2A22] dark:text-[#F4FAF3] rounded-xl text-xs flex items-center gap-1.5 border border-[#C9A24B]/35 dark:border-[#3FA796]/30 font-semibold"
                     >
                       <RefreshCw className="w-3.5 h-3.5" />
                       <span>Reset</span>

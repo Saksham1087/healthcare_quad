@@ -52,7 +52,7 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     {
       id: 'welcome-msg',
       sender: 'assistant',
-      text: 'Namaste! I am SaurAssistant (सौर-सहायक), your nature-inspired health companion. Ask me about your medications, allergies, or lab results in English, हिन्दी, or मराठी.',
+      text: 'Namaste! I am your AI Health Assistant (स्वास्थ्य सहायक). Ask me about your medications, allergies, or lab results in English, हिन्दी, or मराठी.',
       lang: 'en',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
@@ -66,6 +66,16 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const pendingAudioChunksRef = useRef<Blob[]>([]);
+  const finalResultRef = useRef(false);
+  const recordingCapRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusRef = useRef<'idle' | 'listening' | 'thinking' | 'speaking'>('idle');
+
+  // Keep statusRef in sync so async closures tear down against live status
+  useEffect(() => {
+    statusRef.current = status;
+  });
 
   // Auto scroll chat to bottom
   useEffect(() => {
@@ -74,10 +84,41 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     }
   }, [messages, interimTranscript, status]);
 
+  // Escape key listener to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        stopAllAudio();
+        void finalizeRecording();
+        stopListening();
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopAllAudio();
+      if (recordingCapRef.current) {
+        clearTimeout(recordingCapRef.current);
+        recordingCapRef.current = null;
+      }
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      if (mediaRecorderRef.current) {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch {}
+        mediaRecorderRef.current = null;
+        pendingAudioChunksRef.current = [];
+      }
       if (microphoneStreamRef.current) {
         microphoneStreamRef.current.getTracks().forEach((track) => track.stop());
         microphoneStreamRef.current = null;
@@ -103,7 +144,7 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     if (window.speechSynthesis) {
       window.speechSynthesis.cancel();
     }
-    if (status === 'speaking') {
+    if (statusRef.current === 'speaking') {
       setStatus('idle');
     }
   };
@@ -123,22 +164,131 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     }
   };
 
+  // Finalize the parallel recording and hand its blob back for fallback transcription
+  const finalizeRecording = (): Promise<Blob | null> =>
+    new Promise((resolve) => {
+      const recorder = mediaRecorderRef.current;
+      if (!recorder || recorder.state === 'inactive') {
+        mediaRecorderRef.current = null;
+        resolve(null);
+        return;
+      }
+      recorder.onstop = () => {
+        const blob = new Blob(pendingAudioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        mediaRecorderRef.current = null;
+        pendingAudioChunksRef.current = [];
+        resolve(blob.size > 0 ? blob : null);
+      };
+      try {
+        recorder.stop();
+      } catch {
+        mediaRecorderRef.current = null;
+        resolve(null);
+      }
+    });
+
+  // Server-side transcription over /ws/live-audio (Gemini, when browser STT fails)
+  const transcribeWithGemini = (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${proto}//${window.location.host}/ws/live-audio`);
+      let settled = false;
+
+      const fail = (message: string) => {
+        if (settled) return;
+        settled = true;
+        try {
+          ws.close();
+        } catch {}
+        reject(new Error(message));
+      };
+      const done = (text: string) => {
+        if (settled) return;
+        settled = true;
+        try {
+          ws.close();
+        } catch {}
+        resolve(text);
+      };
+      const guard = setTimeout(() => fail('Transcription timed out'), 20000);
+
+      ws.onerror = () => {
+        clearTimeout(guard);
+        fail('Transcription connection failed');
+      };
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            type: 'transcribe-start',
+            lang: selectedLang,
+            mimeType: blob.type.split(';')[0] || 'audio/webm',
+          })
+        );
+        blob.arrayBuffer().then((buf) => ws.send(buf));
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'transcription') {
+            clearTimeout(guard);
+            done(String(msg.text || ''));
+          } else if (msg.type === 'transcription_error') {
+            clearTimeout(guard);
+            fail(String(msg.error || 'Transcription failed'));
+          }
+        } catch {
+          // Ignore malformed frames
+        }
+      };
+      ws.onclose = () => {
+        clearTimeout(guard);
+        fail('Connection closed before transcription completed');
+      };
+    });
+
+  // Manual stop (tap/cap): finalize the recording FIRST, then tear the
+  // session down. If no browser final transcript arrived, transcribe the
+  // recording via Gemini; a null blob (recorder never started) stops silently.
+  const handleStopTap = async () => {
+    const finalArrived = finalResultRef.current;
+    const blob = await finalizeRecording();
+    stopListening();
+    if (finalArrived) return;
+    if (!blob) return;
+    setStatus('thinking');
+    try {
+      const text = (await transcribeWithGemini(blob)).trim();
+      if (text) {
+        handleUserQuery(text);
+        return;
+      }
+    } catch (e) {
+      console.warn('Manual stop transcription notice:', e);
+    }
+    setStatus('idle');
+    setErrorMessage('Voice input stopped without a recognized phrase. Please try again in Google Chrome or re-record.');
+  };
+
   // Start Mic Listening with Audio Waveform Visualizer
   const startListening = async () => {
     stopAllAudio();
+    if (statusRef.current === 'listening') return;
+    finalResultRef.current = false;
     setErrorMessage(null);
 
     const SpeechRecognition =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
+    if (!SpeechRecognition && selectedLang !== 'auto') {
       setErrorMessage('Speech recognition is not supported in this browser. Please use Google Chrome or Edge.');
       return;
     }
 
     try {
       // Connect Microphone for AnalyserNode Visualizer
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
       microphoneStreamRef.current = stream;
 
       if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
@@ -156,6 +306,28 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       source.connect(analyser);
       analyserRef.current = analyser;
 
+      // Record mic audio in parallel so Gemini server-side transcription can be
+      // used when the browser's cloud SpeechRecognition is unavailable
+      // (Brave, BrowserOS, or Chromium builds without bundled speech keys)
+      if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported('audio/webm')) {
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+        const recorder = new MediaRecorder(stream, { mimeType });
+        pendingAudioChunksRef.current = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) pendingAudioChunksRef.current.push(e.data);
+        };
+        recorder.start();
+        mediaRecorderRef.current = recorder;
+        recordingCapRef.current = setTimeout(async () => {
+          if (statusRef.current !== 'listening') return;
+          await handleStopTap();
+        }, 4 * 60 * 1000);
+      }
+
+      // Enter the listening state immediately — recognition.onstart also sets
+      // it where browser STT is active; 'auto' mode relies on this line alone.
+      setStatus('listening');
+
       // Loop to update audio waveform level
       const updateWaveform = () => {
         if (!analyserRef.current) return;
@@ -167,55 +339,82 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
       };
       updateWaveform();
 
-      // Configure Speech Recognition
-      const recognition = new SpeechRecognition();
-      recognition.lang = getRecognitionLang(selectedLang);
-      recognition.interimResults = true;
-      recognition.continuous = false;
-      recognitionRef.current = recognition;
+      // Configure Speech Recognition — skipped entirely in 'auto' mode:
+      // browser cloud STT is not used, only the parallel recording is kept and
+      // finalized via the manual stop tap (handleStopTap) or the 4-minute cap.
+      if (selectedLang !== 'auto') {
+        const recognition = new SpeechRecognition();
+        recognition.lang = getRecognitionLang(selectedLang);
+        recognition.interimResults = true;
+        recognition.continuous = false;
+        recognitionRef.current = recognition;
 
-      recognition.onstart = () => {
-        setStatus('listening');
-        setInterimTranscript('');
-      };
+        recognition.onstart = () => {
+          setStatus('listening');
+          setInterimTranscript('');
+        };
 
-      recognition.onresult = (event: any) => {
-        let final = '';
-        let interim = '';
+        recognition.onresult = (event: any) => {
+          let final = '';
+          let interim = '';
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            final += event.results[i][0].transcript;
-          } else {
-            interim += event.results[i][0].transcript;
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              final += event.results[i][0].transcript;
+            } else {
+              interim += event.results[i][0].transcript;
+            }
           }
-        }
 
-        setInterimTranscript(interim);
+          setInterimTranscript(interim);
 
-        if (final.trim()) {
+          if (final.trim()) {
+            finalResultRef.current = true;
+            void finalizeRecording();
+            stopListening();
+            handleUserQuery(final.trim());
+          }
+        };
+
+        recognition.onerror = async (event: any) => {
+          console.warn('Speech recognition notice:', event.error);
+          // Finalize the parallel recording before stopListening tears it down
+          const recordedBlob = await finalizeRecording();
           stopListening();
-          handleUserQuery(final.trim());
-        }
-      };
+          if (event.error === 'not-allowed') {
+            setErrorMessage('Microphone access was denied. Please allow microphone permissions in your browser settings.');
+          } else if (event.error === 'network' || event.error === 'service-not-allowed') {
+            // Brave / BrowserOS / Chromium builds lack the browser cloud speech
+            // engine — fall back to Gemini transcription of the recorded audio
+            try {
+              if (recordedBlob) {
+                setStatus('thinking');
+                const text = (await transcribeWithGemini(recordedBlob)).trim();
+                if (text) {
+                  handleUserQuery(text);
+                  return;
+                }
+              }
+            } catch (fallbackErr) {
+              console.warn('Gemini transcription fallback notice:', fallbackErr);
+            }
+            setStatus('idle');
+            setErrorMessage(
+              'Voice input is unavailable in this browser: its cloud speech engine was unreachable (common in Brave, BrowserOS, and some Chromium builds), and Gemini transcription did not return a result. Type your question below, or open MediScript in Google Chrome for voice input.'
+            );
+          } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            setErrorMessage(`Audio input notice: ${event.error}`);
+          }
+        };
 
-      recognition.onerror = (event: any) => {
-        console.warn('Speech recognition notice:', event.error);
-        stopListening();
-        if (event.error === 'not-allowed') {
-          setErrorMessage('Microphone access was denied. Please allow microphone permissions in your browser settings.');
-        } else if (event.error !== 'no-speech') {
-          setErrorMessage(`Audio input notice: ${event.error}`);
-        }
-      };
+        recognition.onend = () => {
+          if (statusRef.current === 'listening') {
+            stopListening();
+          }
+        };
 
-      recognition.onend = () => {
-        if (status === 'listening') {
-          stopListening();
-        }
-      };
-
-      recognition.start();
+        recognition.start();
+      }
     } catch (err: any) {
       console.error('Mic access error:', err);
       stopListening();
@@ -225,6 +424,10 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
 
   // Stop Listening and Release Stream
   const stopListening = () => {
+    if (recordingCapRef.current) {
+      clearTimeout(recordingCapRef.current);
+      recordingCapRef.current = null;
+    }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -232,6 +435,13 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
+    }
+    if (mediaRecorderRef.current) {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (e) {}
+      mediaRecorderRef.current = null;
+      pendingAudioChunksRef.current = [];
     }
     if (microphoneStreamRef.current) {
       microphoneStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -244,9 +454,10 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
     analyserRef.current = null;
     setAudioLevel(0);
     setInterimTranscript('');
-    if (status === 'listening') {
+    if (statusRef.current === 'listening') {
       setStatus('idle');
     }
+    finalResultRef.current = false;
   };
 
   // Send Query to Backend & Speak Back Response
@@ -395,28 +606,28 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
 
   return (
     <>
-      {/* Floating Chatbot Leaf/Bulb Launcher Button */}
+      {/* Floating Chatbot Launcher Button */}
       {!isOpen && (
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 p-3.5 rounded-full bg-gradient-to-tr from-[#0F3D2E] via-[#3FA796] to-[#7BC96F] text-white shadow-2xl animate-bulb-glow hover:scale-105 active:scale-95 transition-transform flex items-center gap-2 group"
-          aria-label="Open SaurAssistant Voice Companion"
+          className="fixed bottom-6 right-6 z-50 min-w-[44px] min-h-[44px] p-3.5 rounded-full bg-gradient-to-tr from-[#0F3D2E] via-[#3FA796] to-[#7BC96F] text-white shadow-2xl animate-bulb-glow hover:scale-105 active:scale-95 transition-transform flex items-center gap-2 group"
+          aria-label="Open Voice Health Assistant"
         >
           <div className="relative">
             <BulbSeedIcon size={26} className="text-white" />
             <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#E4572E] border-2 border-[#0F3D2E]" />
           </div>
           <span className="text-xs font-bold tracking-wide pr-1 hidden sm:inline text-[#F4FAF3]">
-            SaurAssistant Voice
+            Voice Health Assistant
           </span>
         </button>
       )}
 
-      {/* Floating Chat Panel (Glassmorphism & Nature Theming) */}
+      {/* Floating Chat Panel */}
       {isOpen && (
         <div className="fixed bottom-6 right-4 sm:right-6 z-50 w-[92vw] sm:w-[420px] max-h-[85vh] h-[640px] flex flex-col rounded-3xl glass-panel shadow-2xl border border-[#3FA796]/30 overflow-hidden font-sans">
-          {/* Top Bar Header with Bulb Branding */}
+          {/* Top Bar Header */}
           <div className="p-4 bg-gradient-to-r from-[#0F3D2E] via-[#12382B] to-[#1E4D3C] text-white flex items-center justify-between border-b border-[#3FA796]/30">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 rounded-xl bg-[#3FA796]/20 border border-[#4CB8A4]/40 flex items-center justify-center">
@@ -424,13 +635,13 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold tracking-tight text-[#F4FAF3]">SaurAssistant</h3>
+                  <h3 className="text-sm font-bold tracking-tight text-[#F4FAF3]">AI Health Assistant</h3>
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-[#7BC96F]/20 text-[#B8E986] border border-[#7BC96F]/30">
                     Voice-to-Voice
                   </span>
                 </div>
                 <p className="text-[10px] text-[#95BDB0]">
-                  Multilingual AI (EN · हिन्दी · मराठी)
+                  Multilingual Clinical Companion
                 </p>
               </div>
             </div>
@@ -439,8 +650,9 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
               <button
                 type="button"
                 onClick={() => setIsMuted(!isMuted)}
-                className="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                className="min-w-[44px] min-h-[44px] p-2.5 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
                 title={isMuted ? 'Unmute voice replies' : 'Mute voice replies'}
+                aria-label={isMuted ? 'Unmute voice replies' : 'Mute voice replies'}
               >
                 {isMuted ? <VolumeX className="w-4 h-4 text-rose-400" /> : <Volume2 className="w-4 h-4 text-[#7BC96F]" />}
               </button>
@@ -451,8 +663,9 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                   stopAllAudio();
                   setMessages([]);
                 }}
-                className="p-1.5 text-slate-300 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+                className="min-w-[44px] min-h-[44px] p-2.5 text-white/80 hover:text-white rounded-lg hover:bg-white/10 transition-colors flex items-center justify-center"
                 title="Clear conversation"
+                aria-label="Clear conversation"
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -461,10 +674,13 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                 type="button"
                 onClick={() => {
                   stopAllAudio();
+                  void finalizeRecording();
+                  stopListening();
                   setIsOpen(false);
                 }}
-                className="p-1.5 text-slate-300 hover:text-[#E4572E] rounded-lg hover:bg-white/10 transition-colors font-bold"
+                className="min-w-[44px] min-h-[44px] p-2.5 text-white/80 hover:text-rose-400 rounded-lg hover:bg-white/10 transition-colors font-bold flex items-center justify-center"
                 aria-label="Close voice assistant"
+                title="Close voice assistant"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -472,9 +688,9 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
           </div>
 
           {/* Language Selector Bar (English, Hindi, Marathi, Auto-Detect) */}
-          <div className="px-4 py-2 bg-[#EDF7F1]/80 dark:bg-[#0E241C] border-b border-[#3FA796]/15 flex items-center justify-between text-xs">
-            <span className="text-[11px] font-medium text-[#4B6E60] dark:text-[#95BDB0] flex items-center gap-1">
-              <Languages className="w-3.5 h-3.5 text-[#3FA796]" />
+          <div className="px-4 py-2 bg-[#F3EBD3]/60 dark:bg-[#0E241C] border-b border-[#3FA796]/15 flex items-center justify-between text-xs">
+            <span className="text-[11px] font-medium text-[#3D5A4C] dark:text-[#A3C5B8] flex items-center gap-1">
+              <Languages className="w-3.5 h-3.5 text-[#2D6A4F] dark:text-[#3FA796]" />
               <span>Speaking Language:</span>
             </span>
 
@@ -491,10 +707,11 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                   key={lang.id}
                   type="button"
                   onClick={() => setSelectedLang(lang.id)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all ${
+                  aria-label={`Select language: ${lang.label}`}
+                  className={`min-h-[44px] px-2.5 py-1 rounded text-[11px] font-semibold transition-all flex items-center justify-center ${
                     selectedLang === lang.id
-                      ? 'bg-[#3FA796] text-white shadow-sm'
-                      : 'text-[#4B6E60] dark:text-[#95BDB0] hover:bg-[#3FA796]/15'
+                      ? 'bg-[#17483A] dark:bg-[#3FA796] text-white dark:text-[#0E2A21] shadow-sm font-bold'
+                      : 'text-[#1B4332] dark:text-[#A3C5B8] hover:bg-[#2D6A4F]/15'
                   }`}
                 >
                   {lang.label}
@@ -506,7 +723,10 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
           {/* Message Stream */}
           <div
             ref={chatScrollRef}
-            className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#F4FAF3]/60 dark:bg-[#0B1F18]/80 text-xs"
+            role="log"
+            aria-live="polite"
+            aria-label="Conversation message history"
+            className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#FAF6EA] dark:bg-[#0B1F18]/80 text-xs"
           >
             {messages.map((msg) => (
               <div
@@ -516,8 +736,8 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                 <div
                   className={`max-w-[85%] rounded-2xl p-3 leading-relaxed space-y-1 shadow-sm ${
                     msg.sender === 'user'
-                      ? 'bg-gradient-to-r from-[#0F3D2E] to-[#1E4D3C] text-white rounded-tr-none'
-                      : 'bg-white dark:bg-[#122B22] border border-[#3FA796]/20 text-[#0F3D2E] dark:text-[#F4FAF3] rounded-tl-none'
+                      ? 'bg-gradient-to-r from-[#17483A] to-[#1E4D3C] text-white rounded-tr-none'
+                      : 'bg-white dark:bg-[#122B22] border border-[#C9A24B]/35 dark:border-[#3FA796]/20 text-[#1B2A22] dark:text-[#F4FAF3] rounded-tl-none'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.text}</p>
@@ -532,27 +752,28 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
             {/* Interim Transcript while speaking */}
             {interimTranscript && (
               <div className="flex flex-col items-end">
-                <div className="max-w-[85%] rounded-2xl p-2.5 bg-[#3FA796]/20 border border-[#3FA796]/40 text-[#0F3D2E] dark:text-[#F4FAF3] text-xs italic">
+                <div className="max-w-[85%] rounded-2xl p-2.5 bg-[#2D6A4F]/15 border border-[#2D6A4F]/30 text-[#1B2A22] dark:text-[#F4FAF3] text-xs italic">
                   <span>{interimTranscript}</span>
-                  <span className="inline-block w-1.5 h-3 ml-1 bg-[#3FA796] animate-pulse" />
+                  <span className="inline-block w-1.5 h-3 ml-1 bg-[#2D6A4F] dark:bg-[#3FA796] animate-pulse" />
                 </div>
               </div>
             )}
 
-            {/* Thinking / Sprout Loading State */}
+            {/* Thinking / Loading State */}
             {status === 'thinking' && (
               <ThemedSproutLoader label="Consulting medical records in English, हिन्दी, मराठी..." />
             )}
 
             {/* Speaking State Indicator */}
             {status === 'speaking' && (
-              <div className="flex items-center gap-2 text-xs text-[#3FA796] dark:text-[#7BC96F] p-2 bg-[#3FA796]/10 rounded-xl border border-[#3FA796]/20">
-                <Volume2 className="w-4 h-4 animate-bounce text-[#3FA796]" />
-                <span className="font-semibold">SaurAssistant is speaking (Tap Stop or Mic to interrupt)</span>
+              <div className="flex items-center gap-2 text-xs text-[#17483A] dark:text-[#7BC96F] p-2 bg-[#FAF6EA] dark:bg-[#14372C] rounded-xl border border-[#C9A24B]/35 dark:border-[#3FA796]/20">
+                <Volume2 className="w-4 h-4 animate-bounce text-[#2D6A4F] dark:text-[#3FA796]" />
+                <span className="font-semibold">Voice assistant is speaking (Tap Stop or Mic to interrupt)</span>
                 <button
                   type="button"
                   onClick={stopAllAudio}
-                  className="ml-auto p-1 text-rose-500 hover:text-rose-600 font-bold text-xs"
+                  aria-label="Stop speaking"
+                  className="ml-auto min-w-[44px] min-h-[44px] flex items-center justify-center p-1 text-rose-600 dark:text-rose-400 hover:text-rose-700 font-bold text-xs"
                 >
                   Stop
                 </button>
@@ -569,7 +790,8 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                 <button
                   type="button"
                   onClick={() => setErrorMessage(null)}
-                  className="text-rose-400 hover:text-rose-200 font-bold"
+                  aria-label="Dismiss error message"
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center text-rose-400 hover:text-rose-200 font-bold"
                 >
                   &times;
                 </button>
@@ -593,8 +815,9 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                 <button
                   type="button"
                   onClick={stopAllAudio}
-                  className="w-16 h-16 rounded-full bg-[#E4572E] text-white flex flex-col items-center justify-center shadow-lg hover:bg-[#D0451C] transition-all hover:scale-105"
+                  className="w-16 h-16 min-w-[44px] min-h-[44px] rounded-full bg-[#E4572E] text-white flex flex-col items-center justify-center shadow-lg hover:bg-[#D0451C] transition-all hover:scale-105"
                   title="Interrupt speaking"
+                  aria-label="Stop speaking and interrupt voice assistant"
                 >
                   <Square className="w-6 h-6 fill-white" />
                   <span className="text-[9px] font-bold mt-0.5 uppercase tracking-wider">Stop</span>
@@ -602,19 +825,23 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
               ) : status === 'listening' ? (
                 <button
                   type="button"
-                  onClick={stopListening}
-                  className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#3FA796] to-[#7BC96F] text-white flex flex-col items-center justify-center shadow-lg shadow-[#3FA796]/50 animate-pulse hover:scale-105 transition-transform"
+                  onClick={handleStopTap}
+                  className="w-16 h-16 min-w-[44px] min-h-[44px] rounded-full bg-gradient-to-tr from-[#3FA796] to-[#7BC96F] text-white flex flex-col items-center justify-center shadow-lg shadow-[#3FA796]/50 animate-pulse hover:scale-105 transition-transform"
                   title="Tap when finished speaking"
+                  aria-label="Stop listening and submit voice message"
                 >
                   <Mic className="w-6 h-6" />
-                  <span className="text-[9px] font-bold mt-0.5 uppercase tracking-wider">Listening</span>
+                  <span className="text-[9px] font-bold mt-0.5 uppercase tracking-wider">
+                    {selectedLang === 'auto' ? 'Gemini Auto' : 'Listening'}
+                  </span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={startListening}
-                  className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#0F3D2E] via-[#3FA796] to-[#7BC96F] text-white flex flex-col items-center justify-center shadow-lg shadow-[#0F3D2E]/30 hover:scale-105 active:scale-95 transition-all group"
+                  className="w-16 h-16 min-w-[44px] min-h-[44px] rounded-full bg-gradient-to-tr from-[#0F3D2E] via-[#3FA796] to-[#7BC96F] text-white flex flex-col items-center justify-center shadow-lg shadow-[#0F3D2E]/30 hover:scale-105 active:scale-95 transition-all group"
                   title="Tap to speak in English, Hindi, or Marathi"
+                  aria-label="Push to talk: Speak in English, Hindi, or Marathi"
                 >
                   <Mic className="w-6 h-6 group-hover:scale-110 transition-transform" />
                   <span className="text-[9px] font-bold mt-0.5 uppercase tracking-wider text-[#B8E986]">
@@ -625,25 +852,28 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
             </div>
 
             {/* Quick Context Prompt Suggestions */}
-            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] text-[#4B6E60] dark:text-[#95BDB0]">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 text-[11px] text-[#3D5A4C] dark:text-[#A3C5B8]">
               <button
                 type="button"
                 onClick={() => handleUserQuery('What active medicines am I taking?')}
-                className="px-2 py-0.5 rounded-full bg-[#3FA796]/10 hover:bg-[#3FA796]/20 text-[#0F3D2E] dark:text-[#F4FAF3] transition-colors"
+                aria-label="Ask: What active medicines am I taking?"
+                className="min-h-[44px] px-3 py-1.5 rounded-full bg-white dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/20 hover:bg-[#FAF6EA] dark:hover:bg-[#17382D] text-[#1B2A22] dark:text-[#F4FAF3] font-medium transition-colors flex items-center justify-center"
               >
                 "My medications?"
               </button>
               <button
                 type="button"
                 onClick={() => handleUserQuery('मेरी कौन सी दवाओं से एलर्जी है?')}
-                className="px-2 py-0.5 rounded-full bg-[#3FA796]/10 hover:bg-[#3FA796]/20 text-[#0F3D2E] dark:text-[#F4FAF3] transition-colors"
+                aria-label="Ask in Hindi: मेरी कौन सी दवाओं से एलर्जी है?"
+                className="min-h-[44px] px-3 py-1.5 rounded-full bg-white dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/20 hover:bg-[#FAF6EA] dark:hover:bg-[#17382D] text-[#1B2A22] dark:text-[#F4FAF3] font-medium transition-colors flex items-center justify-center"
               >
                 "मेरी एलर्जी?" (हिन्दी)
               </button>
               <button
                 type="button"
                 onClick={() => handleUserQuery('माझी रक्तातील साखरेची पातळी काय आहे?')}
-                className="px-2 py-0.5 rounded-full bg-[#3FA796]/10 hover:bg-[#3FA796]/20 text-[#0F3D2E] dark:text-[#F4FAF3] transition-colors"
+                aria-label="Ask in Marathi: माझी रक्तातील साखरेची पातळी काय आहे?"
+                className="min-h-[44px] px-3 py-1.5 rounded-full bg-white dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/20 hover:bg-[#FAF6EA] dark:hover:bg-[#17382D] text-[#1B2A22] dark:text-[#F4FAF3] font-medium transition-colors flex items-center justify-center"
               >
                 "माझी साखर?" (मराठी)
               </button>
@@ -662,7 +892,7 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                     setTextInput('');
                   }
                 }}
-                className="flex-1 bg-[#F4FAF3] dark:bg-[#0B1F18] border border-[#3FA796]/25 rounded-xl px-3 py-1.5 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] placeholder:text-[#4B6E60]/60 dark:placeholder:text-[#95BDB0]/60 focus:outline-none focus:border-[#3FA796]"
+                className="flex-1 bg-white dark:bg-[#0B1F18] border border-[#C9A24B]/35 dark:border-[#3FA796]/25 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] placeholder:text-[#3D5A4C]/60 dark:placeholder:text-[#95BDB0]/60 focus:outline-none focus:border-[#2D6A4F]"
               />
               <button
                 type="button"
@@ -672,7 +902,8 @@ export const VoiceAssistantChatbot: React.FC<VoiceAssistantChatbotProps> = ({
                     setTextInput('');
                   }
                 }}
-                className="p-2 rounded-xl bg-[#3FA796] hover:bg-[#4CB8A4] text-white transition-colors"
+                aria-label="Send message"
+                className="min-w-[44px] min-h-[44px] p-2 rounded-xl bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] dark:hover:bg-[#4CB8A4] text-white dark:text-[#0E2A21] transition-colors flex items-center justify-center"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>

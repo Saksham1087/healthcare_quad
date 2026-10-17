@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "export:docs": "node scripts/export-architecture-docs.js"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

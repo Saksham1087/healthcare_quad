@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+
 
 // High limit for high-resolution medical document scans
 app.use(express.json({ limit: '35mb' }));
@@ -289,6 +289,7 @@ function getSimulatedClinicalResponse(startTime: number, model: string, imageMet
   const latency = Date.now() - startTime + 820;
   return {
     success: true,
+    simulated: true,
     data: {
       overallConfidence: 94.8,
       confidenceBreakdown: {
@@ -725,7 +726,7 @@ ${patientSummary}`;
 
     // Step 1: Generate conversational text response in matching language
     const chatResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: message,
       config: {
         systemInstruction,
@@ -745,13 +746,46 @@ ${patientSummary}`;
       }
     }
 
-    // Step 2: Audio synthesis is handled reliably on the client via browser SpeechSynthesis
+    // Step 2: Generate natural speech audio via Gemini TTS
+    let audioBase64: string | null = null;
+    try {
+      const ttsResponse = await ai.models.generateContent({
+        model: 'gemini-3.8-flash-lite-tts',
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              {
+                text: replyText,
+                speechMetadata: {
+                  style: 'Warm, clear, empathetic Indian medical assistant',
+                },
+              },
+            ],
+          },
+        ],
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Kore' },
+            },
+          },
+        },
+      });
+
+      audioBase64 = ttsResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+    } catch (ttsErr) {
+      console.warn('Gemini TTS generation notice (falling back to client audio):', ttsErr);
+      audioBase64 = null;
+    }
+
     res.json({
       success: true,
       replyText,
       detectedLanguage,
-      audioBase64: null,
-      mimeType: null,
+      audioBase64,
+      mimeType: audioBase64 ? 'audio/wav' : null,
     });
   } catch (err: unknown) {
     console.error('Voice chat error:', err);
@@ -761,8 +795,83 @@ ${patientSummary}`;
 });
 
 import http from 'http';
+import net from 'net';
+import { WebSocketServer } from 'ws';
 
 const server = http.createServer(app);
+
+// WebSocket server for real-time live audio streaming
+const wss = new WebSocketServer({ server, path: '/ws/live-audio' });
+
+wss.on('connection', (ws) => {
+  console.log('[WebSocket] Client connected to /ws/live-audio');
+
+  // Per-connection recording context (one recording per push-to-talk session)
+  const pendingMeta: { mimeType?: string; lang?: string } = {};
+  let started = false;
+
+  ws.on('message', async (data, isBinary) => {
+    try {
+      if (isBinary) {
+        // Binary audio frame: transcribe with Gemini server-side. This path lets
+        // Brave / BrowserOS / Chromium builds without cloud SpeechRecognition
+        // still use voice input via the existing push-to-talk recorder.
+        if (!ai) {
+          ws.send(JSON.stringify({ type: 'transcription_error', error: 'Gemini API key not configured' }));
+          return;
+        }
+        const audioBuffer = data as Buffer;
+        if (!audioBuffer.length) return;
+
+        const langName = pendingMeta.lang === 'en' ? 'English' : pendingMeta.lang === 'hi' ? 'Hindi' : pendingMeta.lang === 'mr' ? 'Marathi' : undefined;
+        const languageHint =
+          langName
+            ? ` The speaker is speaking ${langName}.`
+            : ' Auto-detect whether the speaker is speaking English, Hindi, or Marathi.';
+        const instructions =
+          `Transcribe the spoken words in this audio exactly as spoken, in the original language and script. ` +
+          `Return ONLY the transcription text, no quotes, no explanations.${languageHint}`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { inlineData: { data: audioBuffer.toString('base64'), mimeType: pendingMeta.mimeType || 'audio/webm' } },
+                { text: instructions },
+              ],
+            },
+          ],
+          config: { temperature: 0 },
+        });
+
+        ws.send(JSON.stringify({ type: 'transcription', text: response.text?.trim() || '' }));
+        return;
+      }
+
+      const payload = JSON.parse(data.toString());
+      if (payload.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
+      } else if (payload.type === 'transcribe-start') {
+        started = true;
+        pendingMeta.mimeType = payload.mimeType;
+        pendingMeta.lang = payload.lang;
+      }
+    } catch (e) {
+      // Ignore malformed frames; mid-transcription failures get an explicit error frame
+      if (started) {
+        try {
+          ws.send(JSON.stringify({ type: 'transcription_error', error: 'Server transcription failed' }));
+        } catch {}
+      }
+    }
+  });
+
+  ws.on('close', () => {
+    console.log('[WebSocket] Client disconnected from /ws/live-audio');
+  });
+});
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, 'dist')));
@@ -779,7 +888,127 @@ if (process.env.NODE_ENV === 'production') {
   app.use(vite.middlewares);
 }
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`MediScript Server listening on http://0.0.0.0:${PORT}`);
-});
+/**
+ * Parse CLI port flags and strict port configuration.
+ * Supported CLI flags:
+ *   --port <num>, -p <num>
+ *   --port=<num>, -p=<num>
+ *   --strict-port
+ */
+function parsePortOptions(): { port?: number; strictPort: boolean } {
+  const args = process.argv.slice(2);
+  let port: number | undefined;
+  let strictPort = process.env.STRICT_PORT === 'true';
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--strict-port') {
+      strictPort = true;
+    } else if (arg === '--port' || arg === '-p') {
+      const nextArg = args[i + 1];
+      if (nextArg && !nextArg.startsWith('-')) {
+        const parsed = parseInt(nextArg, 10);
+        if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+          port = parsed;
+        }
+      }
+    } else if (arg.startsWith('--port=')) {
+      const parsed = parseInt(arg.split('=')[1], 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+        port = parsed;
+      }
+    } else if (arg.startsWith('-p=')) {
+      const parsed = parseInt(arg.split('=')[1], 10);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 65535) {
+        port = parsed;
+      }
+    }
+  }
+
+  return { port, strictPort };
+}
+
+/**
+ * Check if a port is currently available on the host interface.
+ */
+function isPortAvailable(port: number, host = '0.0.0.0'): Promise<boolean> {
+  return new Promise((resolve) => {
+    const tester = net.createServer()
+      .once('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+          resolve(false);
+        } else {
+          resolve(false);
+        }
+      })
+      .once('listening', () => {
+        tester.close(() => resolve(true));
+      })
+      .listen(port, host);
+  });
+}
+
+/**
+ * Finds an available port starting from startPort.
+ * If startPort is 0, OS allocates a dynamic port.
+ */
+async function findAvailablePort(startPort: number, host = '0.0.0.0', maxAttempts = 50): Promise<number> {
+  if (startPort === 0) return 0;
+  let port = startPort;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const available = await isPortAvailable(port, host);
+    if (available) {
+      return port;
+    }
+    console.warn(`[Port Manager] Port ${port} is in use, checking port ${port + 1}...`);
+    port++;
+  }
+  throw new Error(`[Port Manager] Could not find an available port after ${maxAttempts} attempts starting from ${startPort}`);
+}
+
+async function startServer() {
+  const { port: cliPort, strictPort } = parsePortOptions();
+  const envPort = process.env.PORT ? parseInt(process.env.PORT, 10) : undefined;
+  const targetPort = cliPort !== undefined
+    ? cliPort
+    : (envPort !== undefined && !isNaN(envPort) ? envPort : 3000);
+
+  let chosenPort = targetPort;
+
+  if (strictPort) {
+    const available = await isPortAvailable(targetPort, '0.0.0.0');
+    if (!available) {
+      console.error(`[Port Manager] Error: Requested port ${targetPort} is already in use and --strict-port is enabled.`);
+      process.exit(1);
+    }
+  } else {
+    chosenPort = await findAvailablePort(targetPort, '0.0.0.0');
+  }
+
+  server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Port Manager] Port ${chosenPort} is already in use.`);
+    } else {
+      console.error('[Server Error]', err);
+    }
+  });
+
+  server.listen(chosenPort, '0.0.0.0', () => {
+    const address = server.address();
+    const actualPort = typeof address === 'object' && address ? address.port : chosenPort;
+    process.env.PORT = String(actualPort);
+
+    console.log(`\n======================================================`);
+    console.log(` MediScript Clinical Engine running on port ${actualPort}`);
+    if (actualPort !== targetPort) {
+      console.log(` (Note: Requested port ${targetPort} was busy; bound to next free port)`);
+    }
+    console.log(` Local:   http://localhost:${actualPort}`);
+    console.log(` Network: http://0.0.0.0:${actualPort}`);
+    console.log(` WS:      ws://localhost:${actualPort}/ws/live-audio`);
+    console.log(`======================================================\n`);
+  });
+}
+
+await startServer();
 

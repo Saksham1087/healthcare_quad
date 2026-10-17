@@ -70,20 +70,31 @@ import {
 export default function App() {
   const [activeTab, setActiveTab] = useState<ActiveTabType>('timeline');
 
-  // Theme Management (Light / Dark mode persisted in localStorage)
+  // Theme Management (Dark mode default, persisted in localStorage)
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem('mediscript-theme');
-    if (saved) return saved === 'dark';
-    return false; // Default to fresh Bulbasaur warm cream light theme
+    try {
+      const mode = localStorage.getItem('mediscript-theme-mode');
+      if (mode === 'light') return false;
+      if (mode === 'dark') return true;
+      return true; // Default to Deep Forest Night dark theme
+    } catch {
+      return true;
+    }
   });
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('mediscript-theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('mediscript-theme', 'light');
+    try {
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('mediscript-theme', 'dark');
+        localStorage.setItem('mediscript-theme-mode', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('mediscript-theme', 'light');
+        localStorage.setItem('mediscript-theme-mode', 'light');
+      }
+    } catch (e) {
+      console.error(e);
     }
   }, [isDarkMode]);
 
@@ -261,6 +272,7 @@ export default function App() {
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [isSimulatedScan, setIsSimulatedScan] = useState<boolean>(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState<boolean>(false);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -290,6 +302,7 @@ export default function App() {
     setCurrentImageUrl(url);
     setScanData(sample.presetData);
     setSelectedLineId(null);
+    setIsSimulatedScan(false);
     setSessionId(`RX-OCR-${Date.now().toString(36).toUpperCase()}`);
 
     // Auto-match patient from sample
@@ -313,6 +326,7 @@ export default function App() {
     setIsProcessing(true);
     setCurrentImageUrl(base64);
     setSelectedLineId(null);
+    setIsSimulatedScan(false);
     setNotification('Transcribing handwritten prescription with Gemini Vision OCR...');
 
     try {
@@ -333,6 +347,7 @@ export default function App() {
 
       const result = await response.json();
       if (result.success && result.data) {
+        setIsSimulatedScan(Boolean(result.simulated));
         setScanData(result.data);
         if (result.modelDetails) {
           setModelDetails(result.modelDetails);
@@ -366,14 +381,18 @@ export default function App() {
           auditLogs: [auditEvent, ...prev.auditLogs],
         }));
 
-        setNotification(`Transcription complete for ${result.data.patient.name || 'Patient'}! Review and commit below.`);
+        if (result.simulated) {
+          setNotification('Simulated fallback data loaded (not a real transcription of your document). Review the sample record below.');
+        } else {
+          setNotification(`Transcription complete for ${result.data.patient.name || 'Patient'}! Review and commit below.`);
+        }
       } else {
         throw new Error(result.error || 'Failed to parse prescription data');
       }
     } catch (err: unknown) {
       console.error('Scan error:', err);
       const message = err instanceof Error ? err.message : 'Error scanning prescription';
-      setNotification(`Scan notice: ${message}. Using calibrated fallback.`);
+      setNotification(`Scan notice: ${message}. No transcription was produced.`);
     } finally {
       setIsProcessing(false);
       setTimeout(() => setNotification(null), 4000);
@@ -798,6 +817,14 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-main)] flex flex-col font-sans transition-colors duration-200">
+      {/* Skip to Main Content link for keyboard accessibility */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[#17483A] focus:text-[#F3EBD3] focus:rounded-xl focus:ring-2 focus:ring-[#C9A24B] focus:shadow-lg font-mono text-xs font-bold"
+      >
+        Skip to Main Content
+      </a>
+
       {/* Top Bar Navigation (Strict 3-zone contract with theme switch & Patient Profile Switcher) */}
       <Navbar
         activeTab={activeTab}
@@ -816,7 +843,11 @@ export default function App() {
 
       {/* Notification Toast with Bulbasaur Teal styling */}
       {notification && (
-        <div className="bg-[#3FA796]/15 border-b border-[#3FA796]/30 px-6 py-2.5 text-xs text-[#0F3D2E] dark:text-[#B8E986] flex items-center justify-between transition-all backdrop-blur-sm">
+        <div
+          role="status"
+          aria-live="polite"
+          className="bg-[#3FA796]/15 border-b border-[#3FA796]/30 px-6 py-2.5 text-xs text-[#0F3D2E] dark:text-[#B8E986] flex items-center justify-between transition-all backdrop-blur-sm"
+        >
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-[#3FA796]" />
             <span className="font-medium">{notification}</span>
@@ -824,7 +855,8 @@ export default function App() {
           <button
             type="button"
             onClick={() => setNotification(null)}
-            className="text-[#3FA796] hover:text-[#0F3D2E] dark:hover:text-white text-xs font-bold"
+            aria-label="Dismiss notification"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#1E6556] dark:text-[#3FA796] hover:text-[#0F3D2E] dark:hover:text-white text-base font-bold transition-colors rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3FA796]"
           >
             &times;
           </button>
@@ -832,23 +864,27 @@ export default function App() {
       )}
 
       {/* Main Viewport Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6">
+      <main id="main-content" tabIndex={-1} className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 flex flex-col gap-6 outline-none">
         {/* Polished Hero / Landing Section (Bulbasaur-Inspired Nature Theme) */}
-        <HeroLandingSection
-          isDarkMode={isDarkMode}
-          onToggleTheme={handleToggleTheme}
-          onOpenScan={() => setIsUploadModalOpen(true)}
-          onOpenVoice={handleOpenVoice}
-          onNavigateToTab={setActiveTab}
-        />
+        {activeTab === 'timeline' && (
+          <HeroLandingSection
+            isDarkMode={isDarkMode}
+            onToggleTheme={handleToggleTheme}
+            onOpenScan={() => setIsUploadModalOpen(true)}
+            onOpenVoice={handleOpenVoice}
+            onNavigateToTab={setActiveTab}
+          />
+        )}
 
         {/* Themed Sprout Loader when processing */}
         {isProcessing && (
-          <ThemedSproutLoader label="Cultivating prescription transcription with Gemini Multimodal Vision..." />
+          <ThemedSproutLoader label="Transcribing handwritten prescription with Gemini Vision OCR..." />
         )}
 
         {/* Natural Vine Curved Divider */}
-        <VineDivider className="w-full h-3 text-[#3FA796]/30 my-1" />
+        {activeTab === 'timeline' && (
+          <VineDivider className="w-full h-3 text-[#3FA796]/30 my-1" />
+        )}
 
         {/* TAB 1: Longitudinal Health Timeline with Quick Patient Switcher */}
         {activeTab === 'timeline' && (
@@ -877,6 +913,19 @@ export default function App() {
         {/* TAB 2: Prescription & Lab OCR Pipeline with Structured Patient Destination */}
         {activeTab === 'scanner' && (
           <div className="space-y-4">
+            {isSimulatedScan && (
+              <div className="flex items-start gap-3 p-3 rounded-2xl border border-[#E4572E]/40 bg-[#E4572E]/10 dark:bg-[#E4572E]/15 shadow-sm">
+                <span className="text-[#E4572E] text-base leading-none mt-0.5">⚠</span>
+                <div>
+                  <p className="text-xs font-extrabold text-[#E4572E] tracking-wide">
+                    SIMULATED DATA — not generated from a document.
+                  </p>
+                  <p className="text-[11px] text-[#4B6E60] dark:text-[#95BDB0] mt-0.5">
+                    Verify only commit behavior with sample review. No real transcription of your document was produced.
+                  </p>
+                </div>
+              </div>
+            )}
             {/* Target Patient Profile Assignment Banner */}
             <div className="p-4 bg-white/80 dark:bg-[#0B1F18]/90 backdrop-blur-md rounded-2xl border border-[#3FA796]/30 shadow-sm flex flex-wrap items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -937,8 +986,8 @@ export default function App() {
                   onClick={() => setOcrMode('canvas')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     ocrMode === 'canvas'
-                      ? 'bg-[#3FA796] text-white shadow-sm'
-                      : 'text-[#4B6E60] dark:text-[#95BDB0] hover:text-[#0F3D2E] dark:hover:text-white'
+                      ? 'bg-[#17483A] dark:bg-[#3FA796] text-white dark:text-[#0E2A21] shadow-sm font-bold'
+                      : 'text-[#1B4332] dark:text-[#A3C5B8] hover:text-[#0F3D2E] dark:hover:text-white'
                   }`}
                 >
                   Prescription Studio (Dual Canvas OCR)
@@ -948,8 +997,8 @@ export default function App() {
                   onClick={() => setOcrMode('whatsapp')}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 ${
                     ocrMode === 'whatsapp'
-                      ? 'bg-[#3FA796] text-white shadow-sm'
-                      : 'text-[#4B6E60] dark:text-[#95BDB0] hover:text-[#0F3D2E] dark:hover:text-white'
+                      ? 'bg-[#17483A] dark:bg-[#3FA796] text-white dark:text-[#0E2A21] shadow-sm font-bold'
+                      : 'text-[#1B4332] dark:text-[#A3C5B8] hover:text-[#0F3D2E] dark:hover:text-white'
                   }`}
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -1112,91 +1161,128 @@ export default function App() {
               </span>
             </div>
             <p className="text-xs leading-relaxed">
-              Fasciculus I · Editorial Vintage Natural-History Style. Cultivating interconnected health continuity for Indian patients across hospitals, clinics, and diagnostic labs.
+              MediScript Continuity Platform. Unified health records and prescription OCR for Indian patients across hospitals, clinics, and diagnostic labs.
             </p>
             <div className="label-micro text-[#C9A24B]">
-              INDEX RERUM · MMXXVI
+              PLATFORM DIRECTORY · 2026
             </div>
           </div>
 
           {/* Col 2: Sovereign Health Architecture */}
           <div className="space-y-2.5">
-            <h4 className="label-micro text-[#C9A24B]">ARCHITECTURA DIGITALIS</h4>
+            <h4 className="label-micro text-[#C9A24B]">DIGITAL ARCHITECTURE</h4>
             <ul className="space-y-1.5 text-xs">
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#7BC96F]" />
-                <span>HL7 FHIR Release 4 Certified</span>
+                <a
+                  href="https://hl7.org/fhir/R4/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors underline-offset-2 hover:underline"
+                >
+                  HL7 FHIR Release 4 Certified ↗
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#3FA796]" />
-                <span>India NRCES / ABDM Guidelines</span>
+                <a
+                  href="https://abdm.gov.in/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors underline-offset-2 hover:underline"
+                >
+                  India NRCES / ABDM Guidelines ↗
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#C9A24B]" />
-                <span>DPDP Act 2023 Sovereign Shield</span>
+                <a
+                  href="https://www.meity.gov.in/data-protection-framework"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors underline-offset-2 hover:underline"
+                >
+                  DPDP Act 2023 Sovereign Shield ↗
+                </a>
               </li>
               <li className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#C5E99B]" />
-                <span>Gemini 3.8 Multimodal Vision</span>
+                <a
+                  href="https://ai.google.dev/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors underline-offset-2 hover:underline"
+                >
+                  Gemini 3.8 Multimodal Vision ↗
+                </a>
               </li>
             </ul>
           </div>
 
-          {/* Col 3: Latin-Style Section Guide */}
+          {/* Col 3: Navigation Section Guide */}
           <div className="space-y-2.5">
-            <h4 className="label-micro text-[#C9A24B]">TABULAE &amp; SECTIONES</h4>
+            <h4 className="label-micro text-[#C9A24B]">NAVIGATION &amp; SECTIONS</h4>
             <ul className="space-y-1.5 text-xs font-mono">
               <li>
                 <button
                   type="button"
                   onClick={() => setActiveTab('timeline')}
-                  className="hover:text-[#3FA796] transition-colors"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors text-left"
                 >
-                  I. CHRONICA (Health Timeline)
+                  1. Health Timeline
                 </button>
               </li>
               <li>
                 <button
                   type="button"
                   onClick={() => setActiveTab('scanner')}
-                  className="hover:text-[#3FA796] transition-colors"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors text-left"
                 >
-                  II. SCRIPTURA (Prescription OCR)
+                  2. Prescription &amp; Lab OCR
                 </button>
               </li>
               <li>
                 <button
                   type="button"
                   onClick={() => setActiveTab('safety')}
-                  className="hover:text-[#3FA796] transition-colors"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors text-left"
                 >
-                  III. CAUTELA (Safety Conflicts)
+                  3. Safety &amp; Conflicts
                 </button>
               </li>
               <li>
                 <button
                   type="button"
                   onClick={() => setActiveTab('consent')}
-                  className="hover:text-[#3FA796] transition-colors"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors text-left"
                 >
-                  IV. CONSENSUS (Doctor Sharing)
+                  4. Consent &amp; Sharing
                 </button>
               </li>
               <li>
                 <button
                   type="button"
                   onClick={() => setActiveTab('emergency')}
-                  className="hover:text-[#3FA796] transition-colors"
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors text-left"
                 >
-                  V. EMERGENTIA (Break-Glass Pass)
+                  5. Emergency Access
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('audit')}
+                  className="hover:text-[#2D6A4F] dark:hover:text-[#52B788] transition-colors text-left"
+                >
+                  6. Audit &amp; Privacy
                 </button>
               </li>
             </ul>
           </div>
 
-          {/* Col 4: Herbarium Actions & Return to Top */}
+          {/* Col 4: Platform Actions & Return to Top */}
           <div className="space-y-3">
-            <h4 className="label-micro text-[#C9A24B]">OPERATIO &amp; REDITUS</h4>
+            <h4 className="label-micro text-[#C9A24B]">ACTIONS &amp; NAVIGATION</h4>
             <div className="space-y-2">
               <button
                 type="button"
@@ -1204,7 +1290,7 @@ export default function App() {
                 className="w-full text-left px-3 py-2 rounded-xl bg-white/70 dark:bg-[#14372C] border border-[#C9A24B]/35 hover:border-[#3FA796] font-mono text-xs font-bold text-[#1B2A22] dark:text-[#F3EBD3] transition-all flex items-center justify-between"
               >
                 <span>↑ RETURN TO TOP</span>
-                <span className="text-[10px] text-[#C9A24B]">[AD APICEM]</span>
+                <span className="text-[10px] text-[#C9A24B]">[BACK TO TOP]</span>
               </button>
 
               <button
@@ -1212,7 +1298,7 @@ export default function App() {
                 onClick={() => setIsIntroModalOpen(true)}
                 className="w-full text-left px-3 py-2 rounded-xl bg-white/70 dark:bg-[#14372C] border border-[#C9A24B]/35 hover:border-[#3FA796] font-mono text-xs text-[#3D5A4C] dark:text-[#A3C5B8] hover:text-[#3FA796] transition-all"
               >
-                Replay Split-Seed Intro
+                Replay Welcome Intro
               </button>
 
               <button

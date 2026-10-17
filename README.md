@@ -1,145 +1,303 @@
-# MediScript (Healthcare AGY) 🌿
+# MediScript (healthcare_quad) 🌿🩺
 
-> **Longitudinal Healthcare Continuity Platform & Trilingual Voice Health Companion**  
-> *ABDM Milestone M1–M3 & DPDP Act 2023 Sovereign Encryption*
+> **A Patient-Governed Universal Healthcare Continuity & Clinical Safety Platform**  
+> *Powered by Gemini 3.8 Flash Multimodal AI, Multilingual Voice Assistant (English & हिन्दी), and the Vintage Botanical Bulbasaur Design System.*
 
-MediScript unifies handwritten doctor prescriptions, multi-family health vaults, and trilingual voice-to-voice AI into an **Editorial Vintage Natural-History** interface inspired by a Bulbasaur botanical aesthetic.
+---
+
+## 🌟 Overview
+
+**MediScript** solves one of modern healthcare's most critical problems: **fragmented medical records**. Today, a patient's medical history is scattered across different hospitals, independent clinics, diagnostic labs, and neighbourhood pharmacies. When visiting a new doctor or an emergency room, vital context is often lost — leading to adverse drug interactions, redundant diagnostic tests, and dangerous medication errors.
+
+MediScript unifies this data into a single, cohesive, patient-controlled longitudinal health timeline grounded in **FHIR R4 standards**. Patients can ingest physical prescriptions via high-resolution photos or WhatsApp, have illegible doctor handwriting transcribed by **Gemini 3.8 Flash Vision AI**, query their medical history using **SaurAssistant (सौर-सहायक)** — a voice chatbot speaking fluent English and Hindi — and review their health records wrapped in an organic **Vintage Botanical Bulbasaur** aesthetic.
+
+---
+
+## 🏛️ System Architecture
+
+```
+                                  ┌──────────────────────────────────────────┐
+                                  │           Patient & Doctor Web UI         │
+                                  │   React 19 · Vite · Tailwind CSS v4      │
+                                  │      Vintage Botanical Bulbasaur Theme   │
+                                  └────────────────────┬─────────────────────┘
+                                                       │
+                           ┌───────────────────────────┼───────────────────────────┐
+                           ▼                           ▼                           ▼
+                 ┌───────────────────┐       ┌───────────────────┐       ┌───────────────────┐
+                 │ Prescription OCR  │       │ SaurAssistant     │       │ Clinical Safety & │
+                 │ Vision Inspector  │       │ Multilingual Chat │       │ FHIR Continuity   │
+                 └─────────┬─────────┘       └─────────┬─────────┘       └─────────┬─────────┘
+                           │                           │                           │
+                           │ REST / JSON (35MB Limit)  │ HTTP + WebSocket Stream   │ In-Memory Store /
+                           │ POST /api/scan-prescription│ /api/chat-voice, /ws/...  │ FHIR R4 Standard
+                           │                           │                           │
+                           └───────────────────────────┼───────────────────────────┘
+                                                       │
+                                                       ▼
+                                  ┌──────────────────────────────────────────┐
+                                  │         MediScript Node / Express        │
+                                  │    TypeScript Server (server.ts:3000)    │
+                                  │         WebSocket Audio Server           │
+                                  └────────────────────┬─────────────────────┘
+                                                       │
+                                                       ▼
+                                  ┌──────────────────────────────────────────┐
+                                  │          Google Gemini API               │
+                                  │  - gemini-3.8-flash (Vision & OCR)       │
+                                  │  - gemini-3.8-flash (Bilingual Chatbot)  │
+                                  │  - gemini-3.8-flash-lite-tts (Voice TTS) │
+                                  └──────────────────────────────────────────┘
+```
+
+---
+
+## 🚀 Core Features
+
+### 1. 🔍 Handwritten Prescription Vision OCR
+- **Gemini 3.8 Flash Vision**: Deep extraction of doctor notes, clinic letterheads, patient demographics, and Latin Sig notations (e.g. `"1 tab PO TID pc"` translated to *"Take 1 tablet by mouth three times daily after meals"*).
+- **Interactive Bounding Box Inspection**: 2D coordinate segments `[ymin, xmin, ymax, xmax]` overlaid directly on prescription scans for human-in-the-loop audit and correction.
+- **Pharmaceutical Verification**: Automatic extraction of Brand names, Generics, strength (mg/mcg/mL), dosage forms, refills, and line-level confidence scoring (0–100%).
+
+### 2. 🎙️ SaurAssistant: Multilingual Voice Chatbot (English & हिन्दी)
+- **Bilingual & Multilingual Fluency**: Seamlessly understands and speaks **English**, **Hindi (हिन्दी / Devanagari)**, and dialectal regional variations (Marathi).
+- **FHIR Context Grounding**: Answers queries strictly from the patient's verified prescriptions, active conditions, allergies, and emergency records.
+- **Voice UX & Barge-In**: Real-time microphone listening, live waveform visualization, Gemini speech synthesis (`gemini-3.8-flash-lite-tts` with voice `'Kore'`), browser SpeechSynthesis fallback, and instant audio barge-in/cancellation.
+- **Real-Time WebSocket Streaming**: Dedicated WebSocket endpoint (`/ws/live-audio`) for bidirectional real-time audio interaction.
+
+### 3. 🌿 Vintage Botanical Bulbasaur Design System
+- **Parchment & Forest Palette**: Warm herbal parchment (`#FAF6EA`), deep forest emerald (`#14372C`), growth green (`#2D6A4F`), and gilded medicinal gold (`#C9A24B`).
+- **Split-Seed Opening Modal**: A botanical seed-pod opening intro animation with persistent `localStorage` memory and strict `prefers-reduced-motion` compliance.
+- **Themed Organic UI**: Sprout loaders, vine flourish corner borders, herbarium specimen cards, and botanical security badges.
+
+### 4. 🛡️ Clinical Safety & Interaction Inspector
+- **Drug-Drug Conflict Detection**: Automated cross-examination of incoming scripts against active medications (e.g., ACE Inhibitors + Potassium-sparing diuretics, NSAID conflicts).
+- **Severe Allergy Intercepts**: Real-time warnings against documented allergies (e.g. Penicillin anaphylaxis).
+- **LASA Safeguards**: Automatic flagging of Look-Alike Sound-Alike pharmaceuticals to prevent dispensing errors.
+
+### 5. 🚨 Emergency Break-Glass & Scoped Consent
+- **Offline Emergency Card**: Cryptographically verifiable QR code containing life-critical blood group, emergency contacts, active medications, and severe allergies.
+- **Audited Break-Glass Mode**: Time-bounded, purpose-declared emergency access protocol for ER clinicians with immutable audit trails.
+- **Consent Studio**: Patient-controlled data sharing policies with granular field masks, expiry dates, and single-click access revocation.
+
+### 6. 📱 Multichannel Ingestion & Continuity
+- **WhatsApp Simulator**: Experience simulated prescription intake via conversational WhatsApp messaging.
+- **Universal Export**: Export lifetime medical records into standard FHIR R4 JSON bundles or human-readable clinical summary PDFs.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technologies |
+|---|---|
+| **Frontend Framework** | React 19, TypeScript 5.8+, Vite 8 |
+| **Styling & Theme** | Tailwind CSS v4, Custom CSS Variables, Botanical Glassmorphism |
+| **Motion & Audio** | Motion (Framer Motion), Web Audio API, Web Speech Recognition |
+| **Icons & Typography** | Lucide React, Google Fonts (Cinzel Decorative, Plus Jakarta Sans, Devanagari support) |
+| **Backend Runtime** | Node.js, Express 4.21, TypeScript via `tsx` |
+| **Real-Time Networking** | WebSocket (`ws` v8.22), HTTP/REST |
+| **Artificial Intelligence** | `@google/genai` (Gemini 3.8 Flash, Gemini Vision, Gemini TTS) |
+| **Data Standard** | HL7 FHIR R4 Patient, MedicationStatement, AllergyIntolerance, Condition |
+
+---
+
+## 📂 Project Directory Structure
+
+```
+healthcare_quad/
+├── .env.example                     # Environment variable blueprint
+├── bun.lock                         # Lockfile for Bun package manager
+├── index.html                       # HTML5 entrypoint with Google Fonts
+├── metadata.json                    # Project manifest & capability declarations
+├── package.json                     # NPM dependencies & scripts
+├── server.ts                        # Unified Express & WebSocket backend
+├── tsconfig.json                    # TypeScript compiler options
+├── vite.config.ts                   # Vite bundler configuration
+│
+├── docs/                            # Deep Architectural & Engineering Documentation
+│   ├── ARCHITECTURE.md              # System design, data pipelines, and FHIR models
+│   ├── VOICE_CHATBOT_TRANSCRIPTION.md # Speech recognition, Devanagari NLP & TTS guide
+│   └── BULBASAUR_THEME.md           # Botanical design tokens, assets & motion spec
+│
+├── openspec/                        # OpenSpec Specification Framework
+│   ├── config.yaml                  # OpenSpec tool configuration
+│   └── changes/                     # Active change proposals
+│       └── add-voice-chatbot-hindi-english-bulbasaur/
+│           ├── proposal.md          # Architectural proposal
+│           ├── design.md            # System design & component contracts
+│           ├── specs/               # Delta requirement specifications
+│           │   ├── voice-assistant-transcription/spec.md
+│           │   └── bulbasaur-botanical-theme/spec.md
+│           └── tasks.md             # Ordered verification & task DAG
+│
+└── src/                             # Frontend Source Code
+    ├── App.tsx                      # Root component & view coordinator
+    ├── main.tsx                     # React DOM bootstrap
+    ├── index.css                    # Tailwind CSS v4 directives & theme variables
+    │
+    ├── components/                  # Modular React Components
+    │   ├── BulbasaurThemeAssets.tsx # Botanical icons, Split-Seed modal & sprout loaders
+    │   ├── VoiceAssistantChatbot.tsx# Multilingual SaurAssistant voice/text companion
+    │   ├── TranscriptionInspector.tsx# Prescription OCR & bounding-box visualizer
+    │   ├── ClinicalSafetyInspector.tsx# Drug interactions, allergies & LASA flags
+    │   ├── EmergencyBreakGlassCard.tsx# Emergency QR card & ER clinician override
+    │   ├── ConsentStudio.tsx        # Granular permissions & access revocation
+    │   ├── HealthTimeline.tsx       # Longitudinal patient record timeline
+    │   ├── MedicationScheduleCard.tsx# Daily adherence & dosage scheduler
+    │   ├── Navbar.tsx               # Botanical header with patient switcher & status
+    │   ├── PatientProfileSwitcher.tsx# Multi-patient profile switcher
+    │   ├── PrescriptionViewer.tsx   # Prescription inspection modal
+    │   ├── UploadModal.tsx          # Multi-source document uploader
+    │   ├── WhatsAppIngestionSimulator.tsx # Ingestion simulation via WhatsApp
+    │   ├── HeroLandingSection.tsx   # Onboarding hero & feature cards
+    │   ├── LifetimeExportModal.tsx  # FHIR & PDF record exporter
+    │   ├── ExportReportModal.tsx    # Shareable doctor summary report modal
+    │   ├── ModelDiagnosticsPanel.tsx# AI latency, token & model telemetry
+    │   └── DoctorCuratedView.tsx    # Clinician view with one-click approval
+    │
+    ├── data/                        # Sample clinical data & records
+    │   ├── patientContinuityRecords.ts # Complete multi-patient FHIR record store
+    │   └── samplePrescriptions.ts   # Realistic prescriptions & base64 scans
+    │
+    ├── services/                    # Domain Business Logic
+    │   └── clinicalSafety.ts        # Drug interaction & contraindication evaluator
+    │
+    └── types/                       # TypeScript Interface Definitions
+        ├── fhir.ts                  # FHIR R4 compliant schemas & patient stores
+        └── prescription.ts          # OCR bounding box & transcription structures
+```
+
+---
+
+## ⚡ Quick Start & Installation
+
+### Prerequisites
+- **Node.js**: v18.0.0 or higher (or **Bun** v1.0.0+)
+- **Google Gemini API Key**: Obtain a key from [Google AI Studio](https://aistudio.google.com/)
+
+### 1. Clone & Install
+```bash
+git clone https://github.com/rairahulr1/healthcare_quad.git project
+cd project
+
+# Install dependencies with Bun or NPM
+bun install
+# or
+npm install
+```
+
+### 2. Environment Configuration
+Create a `.env` file in the project root:
+```bash
+cp .env.example .env
+```
+Populate your Gemini API key:
+```env
+GEMINI_API_KEY="your-gemini-api-key-here"
+PORT=3000
+APP_URL="http://localhost:3000"
+```
+*(Note: If no API key is provided, MediScript automatically falls back to deterministic simulated clinical OCR and simulated bilingual responses for local testing).*
+
+### 3. Run Development Server
+```bash
+# Starts both Express API / WebSocket and Vite frontend (auto-detects free port if 3000 is occupied)
+npm run dev
+
+# Or specify a custom port:
+npm run dev -- --port 8080
+# or
+PORT=8080 npm run dev
+
+# Enforce strict port without auto-incrementing:
+npm run dev -- --port 3000 --strict-port
+```
+Open your browser at the URL shown in console (e.g., **`http://localhost:3000`** or the auto-assigned port).
+
+---
+
+## 📡 API Reference
+
+### 1. `POST /api/scan-prescription`
+Accepts a base64 encoded prescription image and runs clinical OCR.
+- **Request Body**:
+  ```json
+  {
+    "imageBase64": "data:image/jpeg;base64,...",
+    "mimeType": "image/jpeg",
+    "model": "gemini-3.8-flash"
+  }
+  ```
+- **Response**: Full structured prescription JSON including doctor details, patient data, medications, Latin Sig translations, bounding boxes, OCR confidence, and clinical safety flags.
+
+### 2. `POST /api/chat-voice`
+Processes conversational voice or text prompts for SaurAssistant.
+- **Request Body**:
+  ```json
+  {
+    "message": "मुझे मेरी दवाओं के बारे में बताओ",
+    "language": "hi",
+    "patientSummary": "Rajesh Sharma, 58yo..."
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "replyText": "नमस्ते! आप ब्लड प्रेशर के लिए टेलमा-एच और डायबिटीज के लिए ग्लाइकोमेट ले रहे हैं।",
+    "detectedLanguage": "hi",
+    "audioBase64": "<base64_audio_data>",
+    "mimeType": "audio/wav"
+  }
+  ```
+
+### 3. `WebSocket /ws/live-audio`
+Full-duplex WebSocket connection for real-time audio streaming and speech events.
+- **Connect**: `ws://localhost:3000/ws/live-audio`
+- **Ping/Pong**: Keep-alive and low-latency heartbeat verification.
+
+---
+
+## 📜 License & Compliance
+
+
+MediScript is released for clinical workflow innovation and healthcare continuity research. All patient health records are modeled according to **HL7 FHIR R4** standards and Indian **ABDM (Ayushman Bharat Digital Mission)** consent frameworks.
 
 ---
 
 ## 🎬 3.5-Minute Remotion Product Launch Video
 
-> **Official Video Deliverable**: [`demo-video/out/MediScript-Product-Demo.mp4`](demo-video/out/MediScript-Product-Demo.mp4)  
 > **Evaluation Dossier & Scoring Rubrics**: See [**DEMO_VIDEO_GUIDE.md**](DEMO_VIDEO_GUIDE.md) for the complete act-by-act evaluator breakdown.
 
-An end-to-end programmatic product video created with **Remotion 4** (1080p Full HD @ 30 FPS, exactly 6,300 frames, 22.6 MB) showcasing the complete outpatient journey, sovereign vaults, spatial OCR, voice companion, and cryptographic consent.
+A programmatic product video created with **Remotion 4** (1080p Full HD @ 30 FPS, 6 acts) showcasing the complete outpatient journey, sovereign vaults, spatial OCR, voice companion, and cryptographic consent.
 
 ```
 0:00 ─── 0:35 ─── 1:05 ─── 1:35 ────── 2:32 ────── 3:08 ─── 3:30
   │        │        │        │           │           │        │
- Act 1   Act 2    Act 3    Act 4       Act 5       Act 6    Outro
+ Act 1   Act 2    Act 3    Act 4       Act 5       Act 6   Outro
  Crisis  Vaults    OCR     Voice       Consent     Stack
  (OPD)  (Theme)  (RxNorm) (Tri-ling)  (DPDP Sec12) (Arch)
 ```
 
-### ⏱️ Act-by-Act Timeline & Highlights
+### ⏱️ Act-by-Act Timeline
 
-| Act | Timestamp | Title | Key Highlights & Hackathon Criteria |
-| :---: | :---: | :--- | :--- |
-| **Act 1** | **0:00 – 0:35** | **The OPD Clinical Discontinuity Crisis** | Solves India's 70% OPD history dependency & 68% longitudinal record loss; highlights preventable drug-drug interactions (DDI) & cross-reactive penicillin allergy risks in rapid consultations. |
-| **Act 2** | **0:35 – 1:05** | **Herbarium Sanctuary & Multi-Vaults** | Editorial Vintage Natural-History UI ("BulbaCare" aesthetic); live toggle to "Night Garden" dark mode; multi-generational family vaults (Rajesh, Sunita, Aarav) with sovereign isolation and zero cross-patient data bleed. |
-| **Act 3** | **1:05 – 1:35** | **Spatial Vision OCR & Clinical Safety** | Gemini 1000×1000 spatial coordinate grounding on real doctor cursive handwriting; RxNorm Biguanide/Metformin ontology normalization; deterministic penicillin anaphylaxis interception before ingestion. |
-| **Act 4** | **1:35 – 2:32** | **Trilingual Spoken Voice AI Companion** | Real-time voice-to-voice in **English**, **Hindi (हिन्दी)**, and **Marathi (मराठी)**; sub-second latency with zero-markdown auditory synthesis; Web Audio API spectrum analysis; instant barge-in interruption. |
-| **Act 5** | **2:32 – 3:08** | **ABDM Consent Studio & DPDP Shredding** | ABDM M1–M3 compliance; 15-minute ephemeral doctor PIN access; emergency Break-Glass protocol with SHA-256 audit ledger; India DPDP Act 2023 Sec 12 irreversible AES-256 key shredding (Right to Erasure). |
-| **Act 6** | **3:08 – 3:30** | **Grand Outro & Open Source Architecture** | Production system architecture summary; full-stack TypeScript/React 19/Bun stack; reproducible hackathon artifact repository. |
-
-### 🏆 Key Hackathon Evaluation Points
-
-1. **ABDM / ABHA Milestones M1, M2, and M3**:
-   - **M1 (ABHA Creation & Verification)**: Unique patient health ID and secure authentication.
-   - **M2 (Health Information Provider/User - HIP/HIU)**: Linking and sharing FHIR R4 diagnostic and prescription records across disparate facilities.
-   - **M3 (Consent Manager & Ephemeral Access)**: Granular, patient-directed 15-minute time-bounded PIN consent and emergency Break-Glass with immutable SHA-256 logging.
-2. **Trilingual Voice Health Companion (BulbaCare)**:
-   - Voice-first accessibility across **English**, **Hindi**, and **Marathi** with culturally nuanced medical communication and honorifics ("राजेश जी").
-   - Integrated with Web Audio API `AnalyserNode` for dynamic harmonic frequency visualization; supports instant barge-in preemption.
-   - Contextually grounded in the active patient's clinical vault records (e.g., verifying Telmisartan 40mg dosing and intercepting OTC Ibuprofen/NSAID hazards).
-3. **Multimodal Spatial Vision OCR & Clinical Guardrails**:
-   - Precision 1000×1000 normalized coordinate grounding (`[ymin, xmin, ymax, xmax]`) for illegible cursive prescription slips.
-   - Normalization of brand names to RxNorm Concept Unique Identifiers (CUIs).
-   - Deterministic, bidirectional drug-drug interaction and allergy guardrails preventing clinical harm before ingestion.
-4. **India DPDP Act 2023 Compliance & Data Sovereignty**:
-   - Strict multi-family tenant isolation ensuring sovereign boundary protections.
-   - **Section 12 Compliance (Right to Erasure)**: Irreversible AES-256-GCM symmetric key shredding mathematically turns orphaned data into unreconstructible noise.
+| Act | Timestamp | Title |
+| :---: | :---: | :--- |
+| **Act 1** | **0:00 – 0:35** | The OPD Clinical Discontinuity Crisis |
+| **Act 2** | **0:35 – 1:05** | Herbarium Sanctuary & Multi-Vaults |
+| **Act 3** | **1:05 – 1:35** | Spatial Prescription OCR (RxNorm Insight) |
+| **Act 4** | **1:35 – 2:32** | Trilingual Voice Assistant |
+| **Act 5** | **2:32 – 3:08** | Consent & DPDP Compliance |
+| **Act 6** | **3:08 – 3:30** | Stack Architecture & Outro |
 
 ### 💻 Quickstart for Judges: Preview & Render the Video
 
-Judges and evaluators can immediately view or interactively inspect the video:
-
 ```bash
-# 1. Zero-latency instant playback of pre-rendered MP4 (Hardware accelerated)
-ffplay -fs -autoexit demo-video/out/MediScript-Product-Demo.mp4
-
-# OR launch with VLC
-vlc demo-video/out/MediScript-Product-Demo.mp4
-```
-
-```bash
-# 2. Launch interactive Remotion Studio web console (Scrub all 6,300 frames)
+# From the repo root:
 cd demo-video
-npm run start
-# Open http://localhost:3000 to scrub frames, inspect audio waveforms, and examine component props
-```
-
-```bash
-# 3. Re-render the full 1080p MP4 from source code
-cd demo-video
-npx remotion render MediScriptDemo out/MediScript-Product-Demo.mp4
-```
-
-👉 **For the complete dossier with scoring rubrics, frame-by-frame still commands, and audio transcripts, refer to [DEMO_VIDEO_GUIDE.md](DEMO_VIDEO_GUIDE.md).**
-
----
-
-## ✨ Features & Architecture
-
-### 🌿 Bulbasaur Natural-History Design System
-- **Editorial Vintage Aesthetic**: Styled after 19th-century botanical field guides and herbarium compendiums (`#0E2A21` Forest, `#3FA796` Bulbasaur Teal, `#7BC96F` Leaf Green, `#F3EBD3` Aged Parchment, `#D9483B` Seed Coral, `#C9A24B` Gold Leaf).
-- **Typography**: Display headings in `Cormorant Garamond` & `Playfair Display`, clean UI in `Inter`, and specimen plates in `JetBrains Mono`.
-- **Split-Seed Opening Intro**: Botanical seed pod animation with "ENTER THE HERBARIUM" gating (respects `prefers-reduced-motion` and remembers user choice).
-- **Dark Mode ("Night Garden")**: Seamless toggle between Aged Parchment and deep nocturnal forest surfaces, persisted in `localStorage`.
-- **Original Botanical Mascot**: 100% custom vector illustration companion ("BulbaCare") with zero copyrighted Pokémon assets.
-
-### 🎙️ Multilingual Voice-to-Voice AI Assistant (BulbaCare)
-- **Trilingual Spoken Dialogue**: Real-time voice-to-voice interaction in **English**, **Hindi (हिन्दी)**, and **Marathi (मराठी)** with automated language detection.
-- **Barge-in / Instant Interruption**: Users can interrupt BulbaCare at any millisecond while speaking; playback halts immediately and transfers control back to the user.
-- **Web Audio API Engine**: Dynamic soundwave visualizer driven by `AnalyserNode` with proper lifecycle disposal.
-- **Clinical Vault Grounding**: Contextually aware of active prescriptions, allergies, and safety warnings for the currently selected patient profile.
-- **Auditory Speech Output**: Natural speech synthesis with client-side Web Speech fallback.
-
-### 🏥 Core Healthcare Continuity & Multi-Patient Vaults
-- **Multi-Family Profiles**: Isolated partitions for family members (Rajesh, Sunita, Aarav) with instant topbar switching.
-- **Prescription & Lab OCR**: Spatial 1000×1000 coordinate grounding of cursive handwriting powered by Gemini Multimodal Vision.
-- **Deterministic Clinical Safety**: Instant bidirectional drug-drug interaction alerts and cross-reactive penicillin allergy guards.
-- **Cryptographic Audit Ledger**: SHA-256 verified audit trails with DPDP Section 12 cryptographic shredding confirmation.
-- **Time-Bounded Doctor Consents**: Expired share pins are automatically locked and invalidated.
-
----
-
-## 🚀 Getting Started
-
-### 1. Prerequisites
-- Node.js (v18+)
-- Google AI Studio API Key ([Get a key](https://aistudio.google.com/))
-
-### 2. Installation
-```bash
 npm install
+npm run studio    # Live Remotion Studio for interactive frame-scrubbing
+npm run render    # Export the final 1080p MP4 to demo-video/out/
 ```
 
-### 3. Configure Environment Variables
-Create a `.env` file:
-```bash
-cp .env.example .env
-```
-Add your key:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-PORT=3000
-```
-
-### 4. Run Development Server
-```bash
-npm run dev
-```
-Open `http://localhost:3000` in Google Chrome or Microsoft Edge (recommended for Web Audio & Speech Recognition).
-
-### 5. Running Automated Checks
-```bash
-npm run lint    # TypeScript type-checking
-npm run build   # Production Vite bundle build
-```
-
----
-
-## 📜 License
-MIT License.
+The source lives in `demo-video/src/` (6 act scenes + Root.tsx). See [DEMO_VIDEO_GUIDE.md](DEMO_VIDEO_GUIDE.md) for the full judge walkthrough.

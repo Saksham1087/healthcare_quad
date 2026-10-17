@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Users,
   UserPlus,
@@ -30,6 +30,21 @@ export const PatientProfileSwitcher: React.FC<PatientProfileSwitcherProps> = ({
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    if (!isCreateModalOpen && !isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCreateModalOpen) {
+          setIsCreateModalOpen(false);
+        } else if (isOpen) {
+          setIsOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCreateModalOpen, isOpen]);
 
   // Form state for creating a new patient profile
   const [newName, setNewName] = useState<string>('');
@@ -97,7 +112,9 @@ export const PatientProfileSwitcher: React.FC<PatientProfileSwitcherProps> = ({
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 p-1.5 pr-3 rounded-2xl bg-white/70 dark:bg-[#122B22]/80 hover:bg-white dark:hover:bg-[#17382D] border border-[#3FA796]/30 shadow-sm transition-all hover:scale-[1.01] text-left"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className="flex items-center gap-3 p-1.5 pr-3 min-h-[44px] rounded-2xl bg-white/70 dark:bg-[#122B22]/80 hover:bg-white dark:hover:bg-[#17382D] border border-[#3FA796]/30 shadow-sm transition-all hover:scale-[1.01] text-left"
         aria-label="Switch active patient profile"
       >
         <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0F3D2E] to-[#3FA796] flex items-center justify-center font-bold text-white text-sm shadow-sm shrink-0">
@@ -145,22 +162,24 @@ export const PatientProfileSwitcher: React.FC<PatientProfileSwitcherProps> = ({
                   setIsOpen(false);
                   setIsCreateModalOpen(true);
                 }}
-                className="p-1.5 rounded-lg bg-[#3FA796]/15 hover:bg-[#3FA796]/25 text-[#0F3D2E] dark:text-[#B8E986] transition-colors flex items-center gap-1 text-[11px] font-bold"
+                aria-label="Create new patient profile"
+                className="min-h-[44px] px-3 py-1.5 rounded-xl bg-[#3FA796]/15 hover:bg-[#3FA796]/25 text-[#0F3D2E] dark:text-[#B8E986] transition-colors flex items-center justify-center gap-1.5 text-xs font-bold"
               >
-                <UserPlus className="w-3.5 h-3.5 text-[#3FA796]" />
+                <UserPlus className="w-4 h-4 text-[#3FA796]" aria-hidden="true" />
                 <span>+ New</span>
               </button>
             </div>
 
             {/* Search Input */}
             <div className="relative px-1">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 top-3" aria-hidden="true" />
               <input
                 type="text"
+                aria-label="Search patient by name or ABHA"
                 placeholder="Search patient by name or ABHA..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/25 rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] placeholder:text-slate-400 focus:outline-none focus:border-[#3FA796]"
+                className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/25 rounded-xl pl-8 pr-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] placeholder:text-slate-400 focus:outline-none focus:border-[#3FA796]"
               />
             </div>
 
@@ -220,14 +239,19 @@ export const PatientProfileSwitcher: React.FC<PatientProfileSwitcherProps> = ({
       {/* Modal: Create New Patient Profile */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[var(--bg-card)] border border-[#3FA796]/30 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-xs">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-patient-modal-title"
+            className="bg-[var(--bg-card)] border border-[#3FA796]/30 rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl text-xs"
+          >
             <div className="flex items-center justify-between border-b border-[#3FA796]/20 pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-1.5 rounded-xl bg-[#3FA796]/15 text-[#3FA796]">
-                  <UserPlus className="w-5 h-5" />
+                  <UserPlus className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#0F3D2E] dark:text-[#F4FAF3]">
+                  <h3 id="create-patient-modal-title" className="text-sm font-bold text-[#0F3D2E] dark:text-[#F4FAF3]">
                     Create New Patient Profile
                   </h3>
                   <p className="text-[11px] text-[#4B6E60] dark:text-[#95BDB0]">
@@ -238,42 +262,49 @@ export const PatientProfileSwitcher: React.FC<PatientProfileSwitcherProps> = ({
               <button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className="text-slate-400 hover:text-rose-500 font-bold p-1"
+                aria-label="Close dialog"
+                className="min-w-[44px] min-h-[44px] flex items-center justify-center text-[#3D5A4C] dark:text-slate-400 hover:text-rose-600 rounded-xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors font-bold"
               >
-                <X className="w-4 h-4" />
+                <X className="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
 
             <form onSubmit={handleCreateSubmit} className="space-y-3">
               <div>
-                <label className="text-slate-500 font-semibold block mb-1">Patient Full Name *</label>
+                <label htmlFor="new-patient-name" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">Patient Full Name *</label>
                 <input
+                  id="new-patient-name"
+                  name="new-patient-name"
                   type="text"
                   required
                   placeholder="e.g. Priya Sharma, Ananya Rao"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] focus:outline-none focus:border-[#3FA796]"
+                  className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] focus:outline-none focus:border-[#2D6A4F]"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="text-slate-500 font-semibold block mb-1">Age *</label>
+                  <label htmlFor="new-patient-age" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">Age *</label>
                   <input
+                    id="new-patient-age"
+                    name="new-patient-age"
                     type="number"
                     required
                     value={newAge}
                     onChange={(e) => setNewAge(e.target.value)}
-                    className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#3FA796]"
+                    className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#2D6A4F]"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-500 font-semibold block mb-1">Gender</label>
+                  <label htmlFor="new-patient-gender" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">Gender</label>
                   <select
+                    id="new-patient-gender"
+                    name="new-patient-gender"
                     value={newGender}
                     onChange={(e) => setNewGender(e.target.value as any)}
-                    className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-2 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] focus:outline-none focus:border-[#3FA796]"
+                    className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-2 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] focus:outline-none focus:border-[#2D6A4F]"
                   >
                     <option value="male">Male</option>
                     <option value="female">Female</option>
@@ -281,11 +312,13 @@ export const PatientProfileSwitcher: React.FC<PatientProfileSwitcherProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="text-slate-500 font-semibold block mb-1">Blood Group</label>
+                  <label htmlFor="new-patient-blood-group" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">Blood Group</label>
                   <select
+                    id="new-patient-blood-group"
+                    name="new-patient-blood-group"
                     value={newBloodGroup}
                     onChange={(e) => setNewBloodGroup(e.target.value as any)}
-                    className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-2 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#3FA796]"
+                    className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-2 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#2D6A4F]"
                   >
                     <option value="A+">A+</option>
                     <option value="A-">A-</option>
@@ -301,72 +334,82 @@ export const PatientProfileSwitcher: React.FC<PatientProfileSwitcherProps> = ({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-500 font-semibold block mb-1">Phone Number</label>
+                  <label htmlFor="new-patient-phone" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">Phone Number</label>
                   <input
+                    id="new-patient-phone"
+                    name="new-patient-phone"
                     type="text"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#3FA796]"
+                    className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#2D6A4F]"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-500 font-semibold block mb-1">City</label>
+                  <label htmlFor="new-patient-city" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">City</label>
                   <input
+                    id="new-patient-city"
+                    name="new-patient-city"
                     type="text"
                     value={newCity}
                     onChange={(e) => setNewCity(e.target.value)}
-                    className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] focus:outline-none focus:border-[#3FA796]"
+                    className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] focus:outline-none focus:border-[#2D6A4F]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-slate-500 font-semibold block mb-1">Known Drug Allergies</label>
+                <label htmlFor="new-patient-allergies" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">Known Drug Allergies</label>
                 <input
+                  id="new-patient-allergies"
+                  name="new-patient-allergies"
                   type="text"
                   placeholder="e.g. Penicillin, Sulfa, Aspirin, or NKDA"
                   value={newAllergies}
                   onChange={(e) => setNewAllergies(e.target.value)}
-                  className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] focus:outline-none focus:border-[#3FA796]"
+                  className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] focus:outline-none focus:border-[#2D6A4F]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-500 font-semibold block mb-1">Emergency ICE Contact Name</label>
+                  <label htmlFor="new-patient-ice-name" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">Emergency ICE Contact Name</label>
                   <input
+                    id="new-patient-ice-name"
+                    name="new-patient-ice-name"
                     type="text"
                     placeholder="e.g. Ramesh Sharma"
                     value={newIceName}
                     onChange={(e) => setNewIceName(e.target.value)}
-                    className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] focus:outline-none focus:border-[#3FA796]"
+                    className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] focus:outline-none focus:border-[#2D6A4F]"
                   />
                 </div>
                 <div>
-                  <label className="text-slate-500 font-semibold block mb-1">ICE Contact Phone</label>
+                  <label htmlFor="new-patient-ice-phone" className="text-[#1B2A22] dark:text-[#E2ECE9] font-bold block mb-1">ICE Contact Phone</label>
                   <input
+                    id="new-patient-ice-phone"
+                    name="new-patient-ice-phone"
                     type="text"
                     value={newIcePhone}
                     onChange={(e) => setNewIcePhone(e.target.value)}
-                    className="w-full bg-[#F4FAF3] dark:bg-[#071711] border border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#0F3D2E] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#3FA796]"
+                    className="w-full bg-[#FAF6EA] dark:bg-[#071711] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-xl px-3 py-2 text-xs text-[#1B2A22] dark:text-[#F4FAF3] font-mono focus:outline-none focus:border-[#2D6A4F]"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#3FA796]/20">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-[#C9A24B]/20 dark:border-[#3FA796]/20">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 bg-slate-200 dark:bg-[#122B22] text-[#4B6E60] dark:text-[#95BDB0] rounded-xl font-semibold hover:bg-slate-300"
+                  className="min-h-[44px] px-4 py-2 bg-white dark:bg-[#122B22] text-[#1B2A22] dark:text-[#95BDB0] rounded-xl font-semibold hover:bg-[#FAF6EA] border border-[#C9A24B]/35 dark:border-none shadow-sm flex items-center justify-center"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#3FA796] hover:bg-[#4CB8A4] text-white rounded-xl font-bold shadow-md shadow-[#3FA796]/20 flex items-center gap-1.5"
+                  className="min-h-[44px] px-4 py-2 bg-[#17483A] dark:bg-[#3FA796] hover:bg-[#2D6A4F] dark:hover:bg-[#4CB8A4] text-white dark:text-[#0E2A21] rounded-xl font-bold shadow-md shadow-[#17483A]/20 flex items-center justify-center gap-1.5"
                 >
                   <UserPlus className="w-4 h-4" />
-                  <span>Create & Activate Profile</span>
+                  <span>Create &amp; Activate Profile</span>
                 </button>
               </div>
             </form>

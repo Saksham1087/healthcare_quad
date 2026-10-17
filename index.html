@@ -1,8 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (function() {
+        try {
+          var mode = localStorage.getItem('mediscript-theme-mode');
+          if (mode === 'light') {
+            document.documentElement.classList.remove('dark');
+          } else {
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <title>MediScript - Healthcare Continuity Platform & Unified Health History</title>
     <meta name="description" content="MediScript keeps your whole medical history in one place, uniting records across hospitals and clinics with granular consent, clinical safety checks, and offline emergency access." />
     <meta property="og:title" content="MediScript - Healthcare Continuity Platform" />

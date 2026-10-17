@@ -12,8 +12,6 @@ export const SplitSeedIntroModal: React.FC<{
 }> = ({ isOpen, onClose }) => {
   const [isOpening, setIsOpening] = useState(false);
 
-  if (!isOpen) return null;
-
   const handleEnter = () => {
     setIsOpening(true);
     localStorage.setItem('mediscript-herbarium-intro-seen', 'true');
@@ -27,6 +25,20 @@ export const SplitSeedIntroModal: React.FC<{
     localStorage.setItem('mediscript-herbarium-intro-seen', 'true');
     onClose();
   };
+
+  // Close modal on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        handleSkip();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   return (
     <div
@@ -66,22 +78,23 @@ export const SplitSeedIntroModal: React.FC<{
           </svg>
         </div>
 
-        {/* Skip button */}
+        {/* Skip button with 44x44px touch target & aria-label */}
         <button
           type="button"
           onClick={handleSkip}
-          className="absolute top-4 right-5 text-xs font-mono text-[#3D5A4C] dark:text-[#A3C5B8] hover:text-[#D9483B] uppercase tracking-wider font-semibold transition-colors"
+          aria-label="Skip introduction"
+          className="absolute top-3 right-3 min-w-[44px] min-h-[44px] px-3 flex items-center justify-center text-xs font-mono text-[#3D5A4C] dark:text-[#A3C5B8] hover:text-[#D9483B] dark:hover:text-[#D9483B] uppercase tracking-wider font-semibold transition-colors rounded-lg focus:outline-none focus:ring-2 focus:ring-[#3FA796]"
         >
           [ Skip Intro ]
         </button>
 
         {/* Top Field Guide Stamp */}
         <div className="space-y-1">
-          <span className="label-micro text-[#C9A24B] tracking-widest">
-            FASCICULUS I · HERBARIUM CONTINUITATIS
+          <span className="label-micro text-[#8F6E20] dark:text-[#C9A24B] tracking-widest">
+            VOLUME 1 · HEALTHCARE CONTINUITY
           </span>
           <p className="text-[11px] font-mono text-[#3D5A4C] dark:text-[#A3C5B8]">
-            ANNO DOMINI MMXXVI · DIGITAL NATURALIST SPECIMEN
+            YEAR 2026 · DIGITAL HEALTH PLATFORM
           </p>
         </div>
 
@@ -161,22 +174,23 @@ export const SplitSeedIntroModal: React.FC<{
         {/* Title and Editorial Subtitle */}
         <div className="space-y-2">
           <h2 id="intro-modal-title" className="font-editorial text-3xl md:text-4xl font-bold tracking-tight text-[#1B2A22] dark:text-[#F3EBD3]">
-            MediScript Continuitas
+            MediScript Continuity Platform
           </h2>
           <div className="w-32 h-[1px] bg-[#C9A24B] mx-auto opacity-70" />
           <p className="text-xs md:text-sm text-[#3D5A4C] dark:text-[#A3C5B8] max-w-md mx-auto leading-relaxed">
-            The Living Healthcare Continuity Platform. Uniting medical records, multimodal prescription deciphering, and sovereign patient consent under a naturalist&apos;s field-guide framework.
+            The Living Healthcare Continuity Platform. Uniting medical records, multimodal prescription deciphering, and sovereign patient consent into one unified history.
           </p>
         </div>
 
-        {/* Ornate Enter Button */}
+        {/* Ornate Enter Button with 44px+ touch target */}
         <div className="pt-2">
           <button
             type="button"
             onClick={handleEnter}
-            className="group relative inline-flex items-center gap-3 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-[#0E2A21] via-[#17483A] to-[#3FA796] text-[#F3EBD3] font-editorial text-lg font-bold tracking-wider hover:shadow-xl hover:shadow-[#0E2A21]/30 active:scale-95 transition-all border border-[#C9A24B]"
+            aria-label="Enter MediScript platform"
+            className="group relative inline-flex items-center justify-center gap-3 px-8 min-h-[44px] py-3.5 rounded-2xl bg-gradient-to-r from-[#0E2A21] via-[#17483A] to-[#3FA796] text-[#F3EBD3] font-editorial text-lg font-bold tracking-wider hover:shadow-xl hover:shadow-[#0E2A21]/30 active:scale-95 transition-all border border-[#C9A24B]"
           >
-            <span>ENTER THE HERBARIUM</span>
+            <span>ENTER MEDISCRIPT</span>
             <ArrowRight className="w-4 h-4 text-[#C5E99B] group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
@@ -446,7 +460,7 @@ export const VineDivider: React.FC<{ className?: string }> = ({ className = 'w-f
 /**
  * Growing Sprout Animated Loader
  */
-export const ThemedSproutLoader: React.FC<{ label?: string }> = ({ label = 'Cultivating clinical botanical records...' }) => {
+export const ThemedSproutLoader: React.FC<{ label?: string }> = ({ label = 'Loading clinical medical records...' }) => {
   return (
     <div className="flex flex-col items-center justify-center p-8 space-y-3">
       <div className="relative w-16 h-16 flex items-center justify-center">
@@ -460,7 +474,7 @@ export const ThemedSproutLoader: React.FC<{ label?: string }> = ({ label = 'Cult
           </svg>
         </div>
       </div>
-      <p className="text-xs font-mono font-bold text-[#3FA796] dark:text-[#C5E99B] tracking-wide uppercase">
+      <p className="text-xs font-mono font-bold text-[#1E6556] dark:text-[#C5E99B] tracking-wide uppercase">
         {label}
       </p>
     </div>

@@ -105,22 +105,22 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
   return (
     <div className="space-y-6">
       {/* Overview Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <div className="bg-[#FAF6EA] dark:bg-[#14372C] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400 shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-[#2D6A4F]/10 border border-[#2D6A4F]/30 flex items-center justify-center text-[#2D6A4F] dark:text-[#52B788] shrink-0">
               <Share2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white tracking-tight">Granular Consent & Zero-Login Doctor Sharing</h2>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <h2 className="text-base font-bold text-[#1B2A22] dark:text-[#F3EBD3] tracking-tight">Granular Consent &amp; Zero-Login Doctor Sharing</h2>
+              <p className="text-xs text-[#3D5A4C] dark:text-[#A3C5B8] mt-0.5">
                 Share only what is relevant. Limit by clinical purpose, expire automatically in 15 minutes, and protect with a verbal PIN.
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-teal-300">
+            <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-xl bg-[#2D6A4F]/15 text-[#17483A] dark:text-[#C5E99B] border border-[#2D6A4F]/25">
               {activeConsents.length} Active Ephemeral Link{activeConsents.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -129,28 +129,32 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Create New Granular Consent (7 cols) */}
-        <div className="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-white tracking-tight">Generate New Ephemeral Share Link</h3>
+        <div className="lg:col-span-7 bg-[#FAF6EA] dark:bg-[#14372C] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-2xl p-5 space-y-4 shadow-sm">
+          <h3 className="text-sm font-bold text-[#1B2A22] dark:text-[#F3EBD3] tracking-tight">Generate New Ephemeral Share Link</h3>
 
           {/* Recipient and Purpose */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
-              <label className="text-slate-400 font-medium block mb-1">Doctor or Clinic Label</label>
+              <label htmlFor="consent-recipient-label" className="text-[#1B2A22] dark:text-[#F3EBD3] font-bold block mb-1">Doctor or Clinic Label</label>
               <input
+                id="consent-recipient-label"
+                name="consent-recipient-label"
                 type="text"
                 value={recipientLabel}
                 onChange={(e) => setRecipientLabel(e.target.value)}
                 placeholder="e.g. Dr. Sundaram (Nephrology)"
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-teal-500"
+                className="w-full bg-white dark:bg-[#0E2A21] border border-[#C9A24B]/40 dark:border-slate-800 rounded-xl px-3 py-2 text-[#1B2A22] dark:text-[#F3EBD3] placeholder:text-[#3D5A4C]/60 focus:outline-none focus:border-[#2D6A4F]"
               />
             </div>
 
             <div>
-              <label className="text-slate-400 font-medium block mb-1">Clinical Purpose (DPDP / FHIR)</label>
+              <label htmlFor="consent-purpose-select" className="text-[#1B2A22] dark:text-[#F3EBD3] font-bold block mb-1">Clinical Purpose (DPDP / FHIR)</label>
               <select
+                id="consent-purpose-select"
+                name="consent-purpose-select"
                 value={purpose}
                 onChange={(e) => setPurpose(e.target.value as any)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-teal-500"
+                className="w-full bg-white dark:bg-[#0E2A21] border border-[#C9A24B]/40 dark:border-slate-800 rounded-xl px-3 py-2 text-[#1B2A22] dark:text-[#F3EBD3] focus:outline-none focus:border-[#2D6A4F]"
               >
                 <option value="SECOND_OPINION">Second Opinion Consultation</option>
                 <option value="TREATMENT">Direct Medical Treatment</option>
@@ -163,11 +167,13 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
           {/* Time TTL and PIN */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
             <div>
-              <label className="text-slate-400 font-medium block mb-1">Self-Destruct TTL Expiry</label>
+              <label htmlFor="consent-ttl-expiry" className="text-[#1B2A22] dark:text-[#F3EBD3] font-bold block mb-1">Self-Destruct TTL Expiry</label>
               <select
+                id="consent-ttl-expiry"
+                name="consent-ttl-expiry"
                 value={expiryMinutes}
                 onChange={(e) => setExpiryMinutes(parseInt(e.target.value, 10))}
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-teal-500 font-mono"
+                className="w-full bg-white dark:bg-[#0E2A21] border border-[#C9A24B]/40 dark:border-slate-800 rounded-xl px-3 py-2 text-[#1B2A22] dark:text-[#F3EBD3] focus:outline-none focus:border-[#2D6A4F] font-mono font-semibold"
               >
                 <option value={15}>15 Minutes (OPD Quick Consult)</option>
                 <option value={60}>1 Hour</option>
@@ -177,16 +183,18 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
             </div>
 
             <div>
-              <label className="text-slate-400 font-medium block mb-1">Verbal 4-Digit Security PIN</label>
+              <label htmlFor="consent-verbal-pin" className="text-[#1B2A22] dark:text-[#F3EBD3] font-bold block mb-1">Verbal 4-Digit Security PIN</label>
               <div className="flex items-center gap-2">
                 <input
+                  id="consent-verbal-pin"
+                  name="consent-verbal-pin"
                   type="text"
                   maxLength={4}
                   value={pinCode}
                   onChange={(e) => setPinCode(e.target.value)}
-                  className="w-24 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-white font-mono text-center tracking-widest focus:outline-none focus:border-teal-500"
+                  className="w-24 bg-white dark:bg-[#0E2A21] border border-[#C9A24B]/40 dark:border-slate-800 rounded-xl px-3 py-2 text-[#1B2A22] dark:text-[#F3EBD3] font-mono font-bold text-center tracking-widest focus:outline-none focus:border-[#2D6A4F]"
                 />
-                <span className="text-[11px] text-slate-500">State this PIN verbally to doctor</span>
+                <span className="text-[11px] text-[#3D5A4C] dark:text-[#A3C5B8] font-medium">State this PIN verbally to doctor</span>
               </div>
             </div>
           </div>
@@ -194,7 +202,7 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
           {/* Granular Record Selector */}
           <div className="space-y-2 pt-2">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-300 font-semibold">
+              <span className="text-[#1B2A22] dark:text-[#F3EBD3] font-bold">
                 Select Records to Include ({selectedRecordIds.length} of {allRecordItems.length} selected)
               </span>
               <button
@@ -206,31 +214,31 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
                     setSelectedRecordIds(allRecordItems.map((r) => r.id));
                   }
                 }}
-                className="text-teal-400 hover:underline text-[11px]"
+                className="min-h-[44px] inline-flex items-center text-[#2D6A4F] dark:text-[#52B788] hover:underline text-[11px] font-bold"
               >
                 {selectedRecordIds.length === allRecordItems.length ? 'Deselect All' : 'Select All'}
               </button>
             </div>
 
-            <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-slate-950 rounded-lg border border-slate-800 text-xs">
+            <div className="max-h-56 overflow-y-auto space-y-1.5 p-2 bg-white dark:bg-[#0E2A21] rounded-xl border border-[#C9A24B]/35 dark:border-slate-800 text-xs shadow-inner">
               {allRecordItems.map((rec) => {
                 const isSelected = selectedRecordIds.includes(rec.id);
                 return (
                   <label
                     key={rec.id}
-                    className={`flex items-start gap-2.5 p-2 rounded-md cursor-pointer transition-colors ${
-                      isSelected ? 'bg-slate-900 text-white' : 'text-slate-400 hover:bg-slate-900/50'
+                    className={`flex items-start gap-2.5 p-2 rounded-xl cursor-pointer transition-colors ${
+                      isSelected ? 'bg-[#FAF6EA] dark:bg-[#194336] text-[#1B2A22] dark:text-[#F3EBD3] border border-[#2D6A4F]/30 font-semibold' : 'text-[#3D5A4C] dark:text-[#A3C5B8] hover:bg-[#FAF6EA]/50'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleRecord(rec.id)}
-                      className="rounded border-slate-700 bg-slate-800 text-teal-400 focus:ring-teal-500 mt-0.5"
+                      className="rounded border-[#C9A24B] text-[#2D6A4F] focus:ring-[#2D6A4F] mt-0.5"
                     />
                     <div className="flex-1">
-                      <p className="font-medium">{rec.label}</p>
-                      <p className="text-[10px] text-slate-500">{rec.facility}</p>
+                      <p className="font-semibold text-[#1B2A22] dark:text-[#F3EBD3]">{rec.label}</p>
+                      <p className="text-[10px] text-[#3D5A4C] dark:text-[#A3C5B8]">{rec.facility}</p>
                     </div>
                   </label>
                 );
@@ -242,55 +250,55 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
             type="button"
             onClick={handleCreateShare}
             disabled={selectedRecordIds.length === 0}
-            className="w-full py-2.5 px-4 bg-teal-400 hover:bg-teal-300 disabled:opacity-40 text-slate-900 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 text-xs shadow-sm shadow-teal-900/30"
+            className="w-full min-h-[44px] py-2.5 px-4 bg-gradient-to-r from-[#0F3D2E] to-[#2D6A4F] hover:opacity-95 disabled:opacity-40 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 text-xs shadow-md"
           >
-            <Share2 className="w-4 h-4 text-slate-900" />
-            <span>Generate Ephemeral Link & QR</span>
+            <Share2 className="w-4 h-4 text-[#C5E99B]" />
+            <span>Generate Ephemeral Link &amp; QR</span>
           </button>
         </div>
 
         {/* Right Column: Active Consents & Quick Clinician View (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
-          <h3 className="text-sm font-bold text-white tracking-tight">Active Ephemeral Links</h3>
+          <h3 className="text-sm font-bold text-[#1B2A22] dark:text-[#F3EBD3] tracking-tight">Active Ephemeral Links</h3>
 
           {activeConsents.length === 0 ? (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center text-xs text-slate-500">
+            <div className="bg-[#FAF6EA] dark:bg-[#14372C] border border-[#C9A24B]/35 dark:border-[#3FA796]/30 rounded-2xl p-8 text-center text-xs text-[#3D5A4C] dark:text-[#A3C5B8] font-medium shadow-sm">
               No active doctor sharing sessions. Generate one on the left to share with a physician.
             </div>
           ) : (
             activeConsents.map((consent) => (
               <div
                 key={consent.id}
-                className="bg-slate-900 border border-teal-500/40 rounded-xl p-4 space-y-3 shadow-md"
+                className="bg-white dark:bg-[#14372C] border-2 border-[#2D6A4F]/40 dark:border-[#3FA796]/40 rounded-2xl p-4 space-y-3 shadow-md"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h4 className="text-xs font-bold text-white">{consent.sharedWithLabel}</h4>
-                    <p className="text-[11px] text-slate-400">Purpose: {consent.purpose}</p>
+                    <h4 className="text-xs font-bold text-[#1B2A22] dark:text-[#F3EBD3]">{consent.sharedWithLabel}</h4>
+                    <p className="text-[11px] text-[#3D5A4C] dark:text-[#A3C5B8] font-medium">Purpose: {consent.purpose}</p>
                   </div>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-lg bg-[#2D6A4F]/15 text-[#17483A] dark:text-[#C5E99B] border border-[#2D6A4F]/30">
                     ACTIVE
                   </span>
                 </div>
 
-                <div className="bg-slate-950 p-2.5 rounded-lg border border-slate-800 space-y-1.5 text-xs font-mono">
-                  <div className="flex items-center justify-between text-slate-300">
+                <div className="bg-[#FAF6EA] dark:bg-[#0E2A21] p-2.5 rounded-xl border border-[#C9A24B]/35 dark:border-slate-800 space-y-1.5 text-xs font-mono">
+                  <div className="flex items-center justify-between text-[#1B2A22] dark:text-slate-300">
                     <span>Link Token:</span>
-                    <span className="text-teal-400 font-bold">{consent.shareToken}</span>
+                    <span className="text-[#2D6A4F] dark:text-[#52B788] font-bold">{consent.shareToken}</span>
                   </div>
                   {consent.pinCode && (
-                    <div className="flex items-center justify-between text-slate-400">
+                    <div className="flex items-center justify-between text-[#3D5A4C] dark:text-slate-400">
                       <span>Verbal PIN:</span>
-                      <span className="text-amber-300 font-bold tracking-widest">{consent.pinCode}</span>
+                      <span className="text-[#92400E] dark:text-amber-300 font-bold tracking-widest">{consent.pinCode}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                  <div className="flex items-center justify-between text-[#3D5A4C] dark:text-slate-400 text-[10px]">
                     <span>Allowed Records:</span>
-                    <span>{consent.allowedRecordIds.length} items</span>
+                    <span className="font-semibold">{consent.allowedRecordIds.length} items</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-500 text-[10px]">
+                  <div className="flex items-center justify-between text-[#3D5A4C] dark:text-slate-400 text-[10px]">
                     <span>Views:</span>
-                    <span className="tabular-nums">{consent.accessCount} view(s)</span>
+                    <span className="tabular-nums font-semibold">{consent.accessCount} view(s)</span>
                   </div>
                 </div>
 
@@ -298,19 +306,21 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
                   <button
                     type="button"
                     onClick={() => onLaunchDoctorView(consent)}
-                    className="flex-1 py-1.5 px-2 bg-slate-800 hover:bg-slate-750 text-teal-300 rounded-lg border border-slate-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5"
+                    aria-label={`Open doctor view for ${consent.sharedWithLabel}`}
+                    className="flex-1 min-h-[44px] py-1.5 px-2 bg-[#FAF6EA] dark:bg-[#0E2A21] hover:bg-[#EFE6CD] text-[#17483A] dark:text-[#52B788] rounded-xl border border-[#C9A24B]/40 dark:border-slate-700 text-xs font-bold transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                   >
-                    <Eye className="w-3.5 h-3.5" />
+                    <Eye className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Open Doctor View</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => onRevokeConsent(consent.id)}
-                    className="py-1.5 px-3 bg-rose-950/80 hover:bg-rose-900 text-rose-300 rounded-lg border border-rose-800 text-xs font-semibold transition-colors flex items-center gap-1"
+                    aria-label={`Revoke access for ${consent.sharedWithLabel}`}
+                    className="min-h-[44px] min-w-[44px] py-1.5 px-3 bg-[#991B1B]/10 hover:bg-[#991B1B]/20 text-[#991B1B] dark:text-[#F87171] rounded-xl border border-[#991B1B]/30 text-xs font-bold transition-colors flex items-center justify-center gap-1"
                     title="Instant Revoke Access"
                   >
-                    <Ban className="w-3.5 h-3.5" />
+                    <Ban className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Revoke</span>
                   </button>
                 </div>
@@ -320,14 +330,14 @@ export const ConsentStudio: React.FC<ConsentStudioProps> = ({
 
           {revokedConsents.length > 0 && (
             <div className="space-y-1.5 pt-2">
-              <h4 className="text-xs font-semibold text-slate-500 px-1">Revoked / Expired History</h4>
+              <h4 className="text-xs font-bold text-[#3D5A4C] dark:text-[#A3C5B8] px-1 font-mono">Revoked / Expired History</h4>
               {revokedConsents.map((rc) => (
                 <div
                   key={rc.id}
-                  className="bg-slate-900/50 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-500 flex items-center justify-between"
+                  className="bg-[#FAF6EA]/70 dark:bg-[#14372C]/60 border border-[#C9A24B]/30 rounded-xl p-2.5 text-xs text-[#3D5A4C] dark:text-slate-400 flex items-center justify-between shadow-sm"
                 >
                   <span className="line-through">{rc.sharedWithLabel}</span>
-                  <span className="text-[10px] font-mono text-rose-400/80">
+                  <span className="text-[10px] font-mono font-bold text-[#991B1B] dark:text-rose-400/80">
                     {rc.status === 'revoked' ? 'Revoked' : 'Expired'}
                   </span>
                 </div>

@@ -87,6 +87,11 @@ body {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   font-weight: 700;
+  color: #8F6E20;
+}
+
+.dark .label-micro {
+  color: #C9A24B;
 }
 
 /* Ornamental Specimen Double-Rule Borders */
